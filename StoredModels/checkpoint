@@ -1,2 +1,0 @@
-model_checkpoint_path: "VGG_gridwise_prediction.ckpt"
-all_model_checkpoint_paths: "VGG_gridwise_prediction.ckpt"
