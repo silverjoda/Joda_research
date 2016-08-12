@@ -26,7 +26,7 @@ def byteify(input):
     else:
         return input
 
-
+# Main
 def main():
     # Complete filename of first file
     filename = os.path.join(SEED_DATA_PATH, 'matches1.json')
