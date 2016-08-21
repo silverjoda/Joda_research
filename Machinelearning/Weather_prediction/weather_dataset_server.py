@@ -24,6 +24,11 @@ END_OF_TIME = 1469607600
 EXPECTED_SAMPLES = 652929
 
 def main():
+    """
+    Main function
+    -------
+
+    """
 
     # Make input argument parser
     parser = argparse.ArgumentParser()
@@ -38,15 +43,15 @@ def main():
     conn = sqlite3.connect(args.input_path)
 
     # Test database
-    #testdb(conn)
+    #_testdb(conn)
 
     # Fix missing values
-    fix_missing_values(conn)
+    _fix_missing_values(conn)
 
     #get_data_by_daterange(conn, BEGINNING_OF_TIME, 24)
 
 
-def testdb(conn):
+def _testdb(conn):
     """
     Test the database to a)see how big the gaps of missing data are
     b)see if the weather is being logged by delta time intervals or by absolute
@@ -106,7 +111,27 @@ def testdb(conn):
     plt.ylabel('Log frequency')
     plt.show()
 
-def fix_missing_values(conn):
+def _is_valid_sample_date(date):
+    """
+    Check if sample date is valid
+
+    Parameters
+    ----------
+    date: int, UNIX time
+    Returns: bool, validity of date
+    -------
+
+    """
+
+    # Get the time difference
+    delta = date - BEGINNING_OF_TIME
+
+    # Sanity check
+    assert delta >= 0
+
+    return delta % SAMPLETIME_MS == 0
+
+def _fix_missing_values(conn):
     """
     Fix missing values from database.
     Logs start at the BEGINNING_OF_TIME and are logged every 5 minutes.
@@ -123,22 +148,30 @@ def fix_missing_values(conn):
     """
 
     cur = conn.cursor()
-    cur.execute("select datetime(dateTime, 'unixepoch') as date from archive "
-                "order by dateTime asc")
+    cur.execute("select * from archive order by datetime asc")
 
     # Fetch data in list form
     data = cur.fetchall()
 
     # Transform from unicode to string
-    unwanted_dates = []
+    unwanted_entries = []
 
     # Find all dates that do not end with 0 or 5 and add them to list
     for d in data:
-        date = d[0].encode('ascii', 'ignore')
-        last_digit = int(date[15])
-        if (last_digit != 0 and last_digit != 5):
-            unwanted_dates.append(date)
 
+        # Date is the first entry
+        date = d[0]
+
+        # Check validity
+        if not _is_valid_sample_date(date):
+            unwanted_entries.append(d)
+
+    # Remove unwanted dates from data list
+    for d in unwanted_entries:
+        data.remove(d)
+
+    print 'Removing {} unwanted elements from the set .'.format(len(data))
+    exit()
     # Create all missing values with first order hold interpolation
 
 
