@@ -23,6 +23,9 @@ END_OF_TIME = 1469607600
 # Amount of expected samples in the database after adjustment
 EXPECTED_SAMPLES = 652929
 
+PERFORM_DATABASE_CONTENT_ANALYSIS = False
+FIX_MISSING_VALUES = True
+
 def main():
     """
     Main function
@@ -42,13 +45,32 @@ def main():
     # Open database
     conn = sqlite3.connect(args.input_path)
 
+    # Perform some initial tasks (delete everything before beginning of time)
+    _init_checks_on_db(conn)
+
     # Test database
-    #_testdb(conn)
+    if PERFORM_DATABASE_CONTENT_ANALYSIS:
+        _testdb(conn)
 
     # Fix missing values
-    _fix_missing_values(conn)
+    if FIX_MISSING_VALUES:
+        _fix_missing_values(conn)
 
     #get_data_by_daterange(conn, BEGINNING_OF_TIME, 24)
+
+def _init_checks_on_db(conn):
+    cur = conn.cursor()
+    cur.execute('delete from archive where datetime < {}'.format(
+        BEGINNING_OF_TIME))
+
+    cur.execute('select datetime from archive where datetime = {}'.format(
+        BEGINNING_OF_TIME))
+
+    data = cur.fetchall()
+
+    assert data[0] == BEGINNING_OF_TIME, 'No element in database which ' \
+                                         'corresponds to the beginning of time'
+
 
 
 def _testdb(conn):
@@ -131,6 +153,13 @@ def _is_valid_sample_date(date):
 
     return delta % SAMPLETIME_MS == 0
 
+def _get_database_size(conn):
+    cur = conn.cursor()
+    cur.execute("select count(*) from archive")
+
+    # Fetch data in list form
+    return cur.fetchall()
+
 def _fix_missing_values(conn):
     """
     Fix missing values from database.
@@ -170,14 +199,65 @@ def _fix_missing_values(conn):
     for d in unwanted_entries:
         data.remove(d)
 
-    print 'Removing {} unwanted elements from the set .'.format(len(data))
-    exit()
+    print 'Removing {} unwanted elements from the set'.format(
+        len(unwanted_entries))
+
+    # Values that will be added to database
+    interpolated_values = []
+
     # Create all missing values with first order hold interpolation
+    for dp,dc in zip(data[:-1],data[1:]):
+
+        # Calculate time difference between curremt sample and previous
+        delta = dp[0] - dc[0]
+
+        # If this does not pass that means that the dataset might contain
+        # values which were logged at invalid times
+        assert delta % SAMPLETIME_MS == 0
+
+        # If value delta is greater than 300 then find how many values fit in
+        if delta > SAMPLETIME_MS:
+            n_missing_samples = (delta / SAMPLETIME_MS) - 1
+
+            for n in range(n_missing_samples):
+
+                # Copy value
+                new_entry = list(dp[0])
+
+                # Add interpolated values
+                for i in range(len(new_entry)):
+                    value_increment =  (i + 1) * ((dc[i] - dp[i]) / (
+                        n_missing_samples + 1))
+                    new_entry[i] += value_increment
+
+                # First 3 values are integers so cast them back
+                for j in range(3):
+                    new_entry[j] = int(new_entry[j])
+
+                # Append the value
+                interpolated_values.append(new_entry)
 
 
     # Remove unwanted entries from the database
+    database_size_before_deletion  = _get_database_size(conn)
+
+    for u in unwanted_entries:
+        cur.execute("delete from archive where datetime = {}".format(
+            unwanted_entries[0]))
+
+    # Check that the elements have been deleted
+    assert _get_database_size(conn) == database_size_before_deletion - \
+                                       len(unwanted_entries)
 
     # Add the missing values to the database
+    database_size_before_insertion = _get_database_size(conn)
+    for m in interpolated_values:
+        cur.execute("insert into archive values {}".format(
+            unwanted_entries[0]))
+
+    # Check that all elements have been inserted
+    assert _get_database_size(conn) == database_size_before_insertion + len(
+        interpolated_values)
 
     # Check that the count of elements from beginning to end of time is
     # correct
@@ -190,7 +270,7 @@ def _fix_missing_values(conn):
     print 'Theoretical amount of elements that should be in the ' \
           'database: {}'.format(EXPECTED_SAMPLES)
 
-    assert EXPECTED_SAMPLES == data
+    assert EXPECTED_SAMPLES == len(data)
 
 
 def get_data_by_daterange(conn, datefrom, hours):
