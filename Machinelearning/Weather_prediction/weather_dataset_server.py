@@ -9,7 +9,6 @@ import sqlite3
 import matplotlib.pyplot as plt
 import numpy as np
 
-import time
 
 # Sampletime in miliseconds
 SAMPLETIME_MS = 300
@@ -21,7 +20,7 @@ BEGINNING_OF_TIME = 1273728900
 END_OF_TIME = 1469607600
 
 # Amount of expected samples in the database after adjustment
-EXPECTED_SAMPLES = 652929
+EXPECTED_SAMPLES = 1 + (END_OF_TIME - BEGINNING_OF_TIME) / SAMPLETIME_MS
 
 PERFORM_DATABASE_CONTENT_ANALYSIS = False
 FIX_MISSING_VALUES = True
@@ -59,6 +58,16 @@ def main():
     #get_data_by_daterange(conn, BEGINNING_OF_TIME, 24)
 
 def _init_checks_on_db(conn):
+    """
+    Perform initial checks, delete all elements that date before the defined
+    beginning of time
+
+    Parameters
+    ----------
+    conn: obj, database connection
+    -------
+
+    """
     cur = conn.cursor()
     cur.execute('delete from archive where datetime < {}'.format(
         BEGINNING_OF_TIME))
@@ -68,10 +77,8 @@ def _init_checks_on_db(conn):
 
     data = cur.fetchall()
 
-    assert data[0] == BEGINNING_OF_TIME, 'No element in database which ' \
+    assert data[0][0] == BEGINNING_OF_TIME, 'No element in database which ' \
                                          'corresponds to the beginning of time'
-
-
 
 def _testdb(conn):
     """
@@ -154,11 +161,21 @@ def _is_valid_sample_date(date):
     return delta % SAMPLETIME_MS == 0
 
 def _get_database_size(conn):
+    """
+    Return amount of entries in the database
+    Parameters
+    ----------
+    conn: obj, database connection
+
+    Returns int, size of database
+    -------
+
+    """
     cur = conn.cursor()
     cur.execute("select count(*) from archive")
 
     # Fetch data in list form
-    return cur.fetchall()
+    return cur.fetchall()[0][0]
 
 def _fix_missing_values(conn):
     """
@@ -195,12 +212,12 @@ def _fix_missing_values(conn):
         if not _is_valid_sample_date(date):
             unwanted_entries.append(d)
 
+    print 'Removing {} unwanted elements from the set'.format(
+        len(unwanted_entries))
+
     # Remove unwanted dates from data list
     for d in unwanted_entries:
         data.remove(d)
-
-    print 'Removing {} unwanted elements from the set'.format(
-        len(unwanted_entries))
 
     # Values that will be added to database
     interpolated_values = []
@@ -209,7 +226,7 @@ def _fix_missing_values(conn):
     for dp,dc in zip(data[:-1],data[1:]):
 
         # Calculate time difference between curremt sample and previous
-        delta = dp[0] - dc[0]
+        delta = dc[0] - dp[0]
 
         # If this does not pass that means that the dataset might contain
         # values which were logged at invalid times
@@ -222,11 +239,13 @@ def _fix_missing_values(conn):
             for n in range(n_missing_samples):
 
                 # Copy value
-                new_entry = list(dp[0])
+                new_entry = list(dp)
 
                 # Add interpolated values
                 for i in range(len(new_entry)):
-                    value_increment =  (i + 1) * ((dc[i] - dp[i]) / (
+                    if dc[i] is None or dp[i] is None:
+                        continue
+                    value_increment = (n + 1) * ((dc[i] - dp[i]) / (
                         n_missing_samples + 1))
                     new_entry[i] += value_increment
 
@@ -243,34 +262,54 @@ def _fix_missing_values(conn):
 
     for u in unwanted_entries:
         cur.execute("delete from archive where datetime = {}".format(
-            unwanted_entries[0]))
+            u[0]))
 
     # Check that the elements have been deleted
     assert _get_database_size(conn) == database_size_before_deletion - \
-                                       len(unwanted_entries)
+                                       len(unwanted_entries), 'Invalid ' \
+                                                              'elements have ' \
+                                                              'not been ' \
+                                                              'successfuly ' \
+                                                              'deleted from ' \
+                                                              'database'
+
+    print '{} invalid values have been deleted'. \
+        format(len(unwanted_entries))
 
     # Add the missing values to the database
+    qmarkstring = '(?,?,?,?,?,?,?,?,?,?,' \
+                   '?,?,?,?,?,?,?,?,?,?,' \
+                   '?,?,?,?,?,?,?,?,?,?,' \
+                   '?,?,?,?,?,?,?,?,?,?,' \
+                   '?,?,?,?,?,?,?,?,?,?,?,?)'
+
+    print 'Inserting {} interpolated values'. \
+        format(len(interpolated_values))
+
     database_size_before_insertion = _get_database_size(conn)
     for m in interpolated_values:
-        cur.execute("insert into archive values {}".format(
-            unwanted_entries[0]))
+        cur.execute('insert into archive values (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,'
+                    '?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,'
+                    '?,?,?,?,?,?,?,?)', m)
 
     # Check that all elements have been inserted
     assert _get_database_size(conn) == database_size_before_insertion + len(
-        interpolated_values)
+        interpolated_values), 'Interpolated values have not been successfuly ' \
+                              'inserted'
+
+    print '{} interpolated values have been inserted'.\
+        format(len(interpolated_values))
 
     # Check that the count of elements from beginning to end of time is
     # correct
-    cur.execute("select count(*) from archive")
+    assert EXPECTED_SAMPLES == _get_database_size(
+        conn), 'Expected amount of elements in ' \
+                                          'database does not match true ' \
+                                          'value: Expected: {}, true: {}'.\
+        format(EXPECTED_SAMPLES,_get_database_size(conn))
 
-    # Get the actual count of elements
-    data = cur.fetchall()
-
-    print 'Amount of elements in the database: {}'.format(data)
-    print 'Theoretical amount of elements that should be in the ' \
-          'database: {}'.format(EXPECTED_SAMPLES)
-
-    assert EXPECTED_SAMPLES == len(data)
+    # Save (commit) the changes to the database
+    conn.commit()
 
 
 def get_data_by_daterange(conn, datefrom, hours):
