@@ -4,43 +4,47 @@ Description: Script which serves batches of the dataset
 """
 
 import argparse
+import os
+import random
 import sqlite3
 
 import matplotlib.pyplot as plt
 import numpy as np
-import random
-import pprint
 
-# Sampletime in miliseconds
-SAMPLETIME_MS = 300
+TABLE_COLUMNS = ['dateTime','usUnits','interval','barometer','pressure',
+                 'altimeter','inTemp','outTemp','inHumidity','outHumidity',
+                 'windSpeed','windDir','windGust','windGustDir','rainRAte',
+                 'rain','dewpoint','windchill','heatindex','ET']
 
-# Unix time of first sample
-BEGINNING_OF_TIME = 1273728900
+# Sampletime in seconds
+SAMPLETIME_S = 300
+
+# Amount of seconds in one day
+S_IN_DAY = 24 * 3600
+
+# Unix time of first sample, Friday, 14 may 2010
+BEGINNING_OF_TIME = 1273795200
 
 # Unix time of last sample
-END_OF_TIME = 1469607600
+END_OF_TIME = 1469577600
 
 # Amount of expected samples in the database after adjustment
-EXPECTED_SAMPLES = 1 + (END_OF_TIME - BEGINNING_OF_TIME) / SAMPLETIME_MS
+EXPECTED_SAMPLES = 1 + (END_OF_TIME - BEGINNING_OF_TIME) / SAMPLETIME_S
 
 # Visualize some database info
 VISU_DATABASE = False
-PRINT_MOMENTS = False
+PRINT_MOMENTS = True
 
 # Training to validation ratio split
 T_V_RATIO = 0.85
 
-# Training to validation split date
-TRAINING_VALIDATION_SPLIT_DATE = int(BEGINNING_OF_TIME +
-                                    (END_OF_TIME - BEGINNING_OF_TIME) *
-                                     T_V_RATIO)
+N_DAYS_AVAILABLE = (END_OF_TIME - BEGINNING_OF_TIME) / S_IN_DAY
 
-# Amount of seconds in one day
-MS_IN_DAY = 24 * 3600
+# Training to validation split date
+TRAINING_VALIDATION_SPLIT_DATE = int(N_DAYS_AVAILABLE * T_V_RATIO * S_IN_DAY)
 
 # Amount of hours of each element
 BATCH_LENGTH_HOURS = 24
-
 
 # Table moments:
 MEAN = [1371556352.000, 1.000, 5.000, 30.025, 28.871, 30.023, 75.938, 50.707,
@@ -58,20 +62,19 @@ RELEVANT_MEAN = np.array([MEAN[i] for i in RELEVANT_TABLE_COLUMNS])
 RELEVANT_STD = np.array([MEAN[i] for i in RELEVANT_TABLE_COLUMNS])
 
 class DatasetServer:
+    """
+    Class which acts as a data provider
+    """
 
-    def __init__(self):
-
-        # Make input argument parser
-        parser = argparse.ArgumentParser()
-        parser.add_argument('--input_path', required=True, type=str,
-                            help='string: path to sqlite3 database contained '
-                                 'archived data')
-
-        # Parse arguments
-        args = parser.parse_args()
+    def __init__(self, database_path):
 
         # Open database
-        self.conn = sqlite3.connect(args.input_path)
+        self.conn = sqlite3.connect(
+            os.path.join(database_path, 'archive.db'))
+
+        cur = self.conn.cursor()
+        for c in TABLE_COLUMNS:
+            cur.execute("update archive set {} = IFNULL({}, '0')".format(c,c))
 
     def _init_checks_on_db(self):
         """
@@ -173,7 +176,7 @@ class DatasetServer:
         # Sanity check
         assert delta >= 0
 
-        return delta % SAMPLETIME_MS == 0
+        return delta % SAMPLETIME_S == 0
 
     def _get_database_size(self):
         """
@@ -237,19 +240,21 @@ class DatasetServer:
         # Values that will be added to database
         interpolated_values = []
 
+        # Amount of nans
+        n_nans = 0
+
         # Create all missing values with first order hold interpolation
-        for dp,dc in zip(data[:-1],data[1:]):
+        for j,(dp,dc) in enumerate(zip(data[:-1],data[1:])):
 
-            # Calculate time difference between curremt sample and previous
+            # Calculate time difference between current sample and previous
             delta = dc[0] - dp[0]
-
             # If this does not pass that means that the dataset might contain
             # values which were logged at invalid times
-            assert delta % SAMPLETIME_MS == 0
+            assert delta % SAMPLETIME_S == 0
 
             # If value delta is greater than 300 then find how many values fit in
-            if delta > SAMPLETIME_MS:
-                n_missing_samples = (delta / SAMPLETIME_MS) - 1
+            if delta > SAMPLETIME_S:
+                n_missing_samples = (delta / SAMPLETIME_S) - 1
 
                 for n in range(n_missing_samples):
 
@@ -271,6 +276,7 @@ class DatasetServer:
                     # Append the value
                     interpolated_values.append(new_entry)
 
+        print '{} nans have been replaced'.format(n_nans)
 
         # Remove unwanted entries from the database
         database_size_before_deletion  = self._get_database_size()
@@ -290,7 +296,7 @@ class DatasetServer:
                                                                   'deleted from ' \
                                                                   'database'
 
-        print '{} invalid values have been deleted'. \
+        print '{} invalid values have been deleted from the database'. \
             format(len(unwanted_entries))
 
         print 'Inserting {} interpolated values'. \
@@ -308,7 +314,7 @@ class DatasetServer:
             interpolated_values), 'Interpolated values have not been successfuly ' \
                                   'inserted'
 
-        print '{} interpolated values have been inserted'.\
+        print '{} interpolated values have been inserted into the database'.\
             format(len(interpolated_values))
 
         # Check that the count of elements from beginning to end of time is
@@ -341,6 +347,9 @@ class DatasetServer:
 
         # Turn to np.array
         data = np.array(data, dtype=np.float32)
+
+        print 'The following amout of nans has been found the in the set: ',  \
+              np.sum(np.isnan(data), axis=(0))
 
         # Get moments
         mean = np.nanmean(data, axis=(0))
@@ -386,7 +395,7 @@ class DatasetServer:
                     'order by dateTime asc'.format(datefrom,
                                                    datefrom +
                                                    hours * 3600 -
-                                                   SAMPLETIME_MS))
+                                                   SAMPLETIME_S))
 
         # Fetch data in list form
         data = cur.fetchall()
@@ -414,9 +423,9 @@ class DatasetServer:
         # Vector of available values
         available_values = range(BEGINNING_OF_TIME + offset,
                                  TRAINING_VALIDATION_SPLIT_DATE,
-                                 MS_IN_DAY)
+                                 S_IN_DAY)
 
-        # Select random value
+        # Select batchsize random days
         random_vals = random.sample(range(0,len(available_values)), batchsize)
 
         # List which will hold the batch
@@ -433,14 +442,50 @@ class DatasetServer:
             # Append to our batch
             batch.append(processed_values)
 
-        assert len(batch[0]) == BATCH_LENGTH_HOURS * (3600 / SAMPLETIME_MS)
+        assert len(batch[0]) == BATCH_LENGTH_HOURS * (3600 / SAMPLETIME_S)
 
         return np.array(batch, dtype=np.float32)
 
+    def get_validation_batch(self, hour, batchsize):
+        """
 
+        Parameters
+        ----------
+        hour: int, hour offset
+        size: int, batch size
 
+        Returns np array batch of 24 hour sequences
+        -------
 
+        """
+        # Amount of offset in seconds
+        offset = hour * 3600
 
+        # Vector of available values
+        available_values = range(TRAINING_VALIDATION_SPLIT_DATE + offset,
+                                 END_OF_TIME - S_IN_DAY * 2,
+                                 S_IN_DAY)
+
+        # Select batchsize random days
+        random_vals = random.sample(range(0, len(available_values)), batchsize)
+
+        # List which will hold the batch
+        batch = []
+
+        # Get values
+        for val in random_vals:
+            # Get values from database
+            raw_values = self.get_data_by_daterange(val, BATCH_LENGTH_HOURS)
+
+            # Process values (use only neccessary values, normalize, etc)
+            processed_values = self._process_raw_sql_data(raw_values)
+
+            # Append to our batch
+            batch.append(processed_values)
+
+        assert len(batch[0]) == BATCH_LENGTH_HOURS * (3600 / SAMPLETIME_S)
+
+        return np.array(batch, dtype=np.float32)
 
 def main():
     """
@@ -449,22 +494,32 @@ def main():
 
     """
 
+    # Make input argument parser
+    parser = argparse.ArgumentParser()
+    parser.add_argument('--input_path', required=True, type=str,
+                        help='string: path to sqlite3 database contained '
+                             'archived data')
+
+    # Parse arguments
+    args = parser.parse_args()
+
     # Make database object
-    server = DatasetServer()
+    server = DatasetServer(args.input_path)
 
     # Test database
     if VISU_DATABASE:
         server._database_info()
-
-    # Print dataset statistics
-    if PRINT_MOMENTS:
-        server._print_avg_and_std_of_dataset()
 
     # Perform some initial tasks (delete everything before beginning of time)
     server._init_checks_on_db()
 
     # Fix missing values
     server._fix_missing_values()
+
+    # Print dataset statistics
+    if PRINT_MOMENTS:
+        server._print_avg_and_std_of_dataset()
+
 
 if __name__ == '__main__':
     main()

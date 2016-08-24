@@ -81,3 +81,4 @@ class WeatherNetwork:
                                  self.b_out)
 
         self.cost = tf.square(self.prediction, self.Y)
+
