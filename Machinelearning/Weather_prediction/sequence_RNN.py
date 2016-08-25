@@ -36,6 +36,7 @@ class WeatherNetwork:
         self.dropout_keep_p = config["dropout_keep_p"]
         self.n_layers = config["n_layers"]
         self.learning_rate = config["learning_rate"]
+        self.horizon_decay = config["horizon_decay"]
 
         # Intialize the classifier (forecaster) network
         self._init_RNN()
@@ -49,10 +50,9 @@ class WeatherNetwork:
 
     def _init_RNN(self):
         # Input placeholder for single binary pair input
-        self.X = tf.placeholder(dtype=tf.float32,
-                                shape=[None,
-                                       self.n_training_steps,
-                                       self.input_dim])
+        self.X = tf.placeholder(dtype=tf.float32,shape=[None,
+                                                        self.n_training_steps,
+                                                        self.input_dim])
 
         # Output label
         self.Y = tf.placeholder(dtype=tf.float32, shape=[None,
@@ -83,30 +83,36 @@ class WeatherNetwork:
                                             inputs=self.X,
                                             dtype=tf.float32)
 
+        # Transpose so that we have [steps, batch, hiddendim]
         self.hidden_outputs = tf.transpose(self.hidden_outputs, [1, 0, 2])
 
         # Take only the last n_prediction_steps outputs
         self.hidden_predictions = tf.gather(params=self.hidden_outputs,
-                           indices=range(self.n_training_steps,
-                                         self.n_training_steps +
-                                         self.n_prediction_steps))
+                           indices=range(self.n_training_steps -
+                                         self.n_prediction_steps,
+                                         self.n_training_steps))
 
-        #self.hidden_predictions = tf.transpose(self.hidden_predictions,
-        #                                      [1, 0, 2])
-
-        #print self.hidden_predictions.get_shape()
-        #print self.w_out.get_shape()
-
-        self.unpacked_predictions = tf.unpack(self.hidden_predictions, )
+        # Unpack the predictions into a list of length *n_prediction_steps*
+        # and shapes [batch, output_dim]
+        self.unpacked_predictions = tf.unpack(self.hidden_predictions)
         self.unpacked_predictions = [tf.nn.tanh(tf.matmul(p, self.w_out) +
             self.b_out) for p in self.unpacked_predictions]
 
 
+        # Prediction operation
         self.packed_predictions = tf.pack(self.unpacked_predictions)
         self.predict = tf.transpose(self.packed_predictions,
                                                [1, 0, 2])
 
-        self.cost = tf.reduce_mean(tf.square(self.packed_predictions - self.Y))
+        self.cost = 0
+
+        self.unpacked_Y = tf.unpack(tf.transpose(self.Y, [1, 0, 2]))
+
+        for i in range(self.n_prediction_steps):
+            self.cost += (self.horizon_decay ** i) * tf.square(
+                self.unpacked_predictions[i] - self.unpacked_Y[i])
+
+        self.cost = tf.reduce_mean(self.cost)
 
 
 

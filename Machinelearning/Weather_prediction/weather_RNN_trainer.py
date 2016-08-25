@@ -64,8 +64,6 @@ def train_network(dataserver, RNN, config):
     # Initialize all variables
     session.run(tf.initialize_all_variables())
 
-    # Training error
-    training_err = 0
 
     # Train
     for i in range(iters):
@@ -73,24 +71,22 @@ def train_network(dataserver, RNN, config):
         # Get data
         batch = dataserver.get_training_batch(0, config["batchsize"])
 
-        training_err = session.run([RNN.train_step, RNN.cost],
+        _, batch_err = session.run([RNN.train_step, RNN.cost],
                     feed_dict = {RNN.X : batch[:, : N_TIME_STEPS],
                                  RNN.Y : batch[:, N_TIME_STEPS :,
-                                         INDEX_OF_OUTSIDE_TEMP] })
+                                         [INDEX_OF_OUTSIDE_TEMP]] })
 
-        print training_err.shape
-        exit()
+        print 'MSE on training batch: {}'.format(batch_err /
+                                                 config["batchsize"])
 
-        print 'MSE on training batch: {}'.format(training_err)
-
-        if i % config["iters_per_eval"]:
+        if i % config["iters_per_eval"] == 0 and i > 0:
             # Get data
-            batch = dataserver.get_validation_batch(0, config["batchsize"] * 5)
+            batch = dataserver.get_validation_batch(0, config["batchsize"])
 
-            validation_err = session.run([RNN.train_step, RNN.cost],
+            validation_err = session.run([RNN.cost],
                               feed_dict={RNN.X: batch[:, : N_TIME_STEPS],
                                          RNN.Y: batch[:, N_TIME_STEPS:,
-                                                INDEX_OF_OUTSIDE_TEMP] })
+                                                [INDEX_OF_OUTSIDE_TEMP]] })
 
             print 'MSE on validation batch: {}'.format(validation_err)
 

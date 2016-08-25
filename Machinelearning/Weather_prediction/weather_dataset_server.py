@@ -36,13 +36,13 @@ VISU_DATABASE = False
 PRINT_MOMENTS = False
 
 # Training to validation ratio split
-T_V_RATIO = 0.85
+T_V_RATIO = 0.9
 
 N_DAYS_AVAILABLE = (END_OF_TIME - BEGINNING_OF_TIME) / S_IN_DAY
 
 # Training to validation split date
-TRAINING_VALIDATION_SPLIT_DATE = int(BEGINNING_OF_TIME + N_DAYS_AVAILABLE *
-                                     T_V_RATIO * S_IN_DAY)
+TRAINING_VALIDATION_SPLIT_DATE = int(BEGINNING_OF_TIME + int(N_DAYS_AVAILABLE *
+                                     T_V_RATIO) * S_IN_DAY)
 
 # Amount of hours of each element
 BATCH_LENGTH_HOURS = 24
@@ -63,7 +63,7 @@ RELEVANT_TABLE_COLUMNS = [3,4,5,6,7,8,9,10,11,12,13,14,15,16,17]
 INPUT_DIM = len(RELEVANT_TABLE_COLUMNS)
 
 RELEVANT_MEAN = np.array([DATASET_MEAN[i] for i in RELEVANT_TABLE_COLUMNS])
-RELEVANT_STD = np.array([DATASET_MEAN[i] for i in RELEVANT_TABLE_COLUMNS])
+RELEVANT_STD = np.array([DATASET_STD[i] for i in RELEVANT_TABLE_COLUMNS])
 
 class DatasetServer:
     """
@@ -414,7 +414,6 @@ class DatasetServer:
                                  TRAINING_VALIDATION_SPLIT_DATE,
                                  S_IN_DAY)
 
-
         # Select batchsize random days
         random_vals = random.sample(available_values, batchsize)
 
@@ -463,7 +462,7 @@ class DatasetServer:
                                  S_IN_DAY)
 
         # Select batchsize random days
-        random_vals = random.sample(range(0, len(available_values)), batchsize)
+        random_vals = random.sample(available_values, batchsize)
 
         # List which will hold the batch
         batch = []
@@ -473,11 +472,16 @@ class DatasetServer:
             # Get values from database
             raw_values = self.get_data_by_daterange(val, BATCH_LENGTH_HOURS)
 
-            # Process values (use only neccessary values, normalize, etc)
-            processed_values = self._process_raw_sql_data(raw_values)
+            # Use only relevant values
+            relevant_values = [[d[i] for i in RELEVANT_TABLE_COLUMNS] for d in
+                               raw_values]
+
+            # Process values (normalize, etc)
+            normalized_data = [(np.array(d) - np.array(RELEVANT_MEAN)) /
+                               np.array(RELEVANT_STD) for d in relevant_values]
 
             # Append to our batch
-            batch.append(processed_values)
+            batch.append(normalized_data)
 
         assert len(batch[0]) == BATCH_LENGTH_HOURS * (3600 / SAMPLETIME_S)
 
