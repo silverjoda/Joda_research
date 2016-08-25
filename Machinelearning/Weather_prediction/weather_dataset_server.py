@@ -33,7 +33,7 @@ EXPECTED_SAMPLES = 1 + (END_OF_TIME - BEGINNING_OF_TIME) / SAMPLETIME_S
 
 # Visualize some database info
 VISU_DATABASE = False
-PRINT_MOMENTS = True
+PRINT_MOMENTS = False
 
 # Training to validation ratio split
 T_V_RATIO = 0.85
@@ -41,25 +41,29 @@ T_V_RATIO = 0.85
 N_DAYS_AVAILABLE = (END_OF_TIME - BEGINNING_OF_TIME) / S_IN_DAY
 
 # Training to validation split date
-TRAINING_VALIDATION_SPLIT_DATE = int(N_DAYS_AVAILABLE * T_V_RATIO * S_IN_DAY)
+TRAINING_VALIDATION_SPLIT_DATE = int(BEGINNING_OF_TIME + N_DAYS_AVAILABLE *
+                                     T_V_RATIO * S_IN_DAY)
 
 # Amount of hours of each element
 BATCH_LENGTH_HOURS = 24
 
 # Table moments:
-MEAN = [1371556352.000, 1.000, 5.000, 30.025, 28.871, 30.023, 75.938, 50.707,
-        25.130, 75.224, 4.224, 176.058, 8.413, 178.360, 0.003, 0.000, 42.206,
-        49.454, 50.756, 0.000]
+DATASET_MEAN = (1371556352.000, 1.000, 5.000, 30.025, 28.871, 30.023, 75.938,
+                50.707, 25.130, 75.224, 4.224, 176.058, 8.413, 178.360,
+                0.003, 0.000, 42.206, 49.454, 50.756, 0.000)
 
-STD = [56542020.000, 0.000, 0.000, 0.242, 0.384, 0.339, 5.447, 15.278, 5.190,
-       16.635, 2.793, 105.779, 4.978, 105.065, 0.072, 0.002, 11.989, 16.581,
-       15.361, 0.002]
+DATASET_STD = (56542020.000, 0.000, 0.000, 0.242, 0.384, 0.339, 5.447,
+               15.278, 5.190, 16.635, 2.793, 105.779, 4.978, 105.065, 0.072,
+               0.002, 11.989, 16.581, 15.361, 0.002)
 
 # Indeces of valid data elements from the sql table
 RELEVANT_TABLE_COLUMNS = [3,4,5,6,7,8,9,10,11,12,13,14,15,16,17]
 
-RELEVANT_MEAN = np.array([MEAN[i] for i in RELEVANT_TABLE_COLUMNS])
-RELEVANT_STD = np.array([MEAN[i] for i in RELEVANT_TABLE_COLUMNS])
+# Amount of input variables
+INPUT_DIM = len(RELEVANT_TABLE_COLUMNS)
+
+RELEVANT_MEAN = np.array([DATASET_MEAN[i] for i in RELEVANT_TABLE_COLUMNS])
+RELEVANT_STD = np.array([DATASET_MEAN[i] for i in RELEVANT_TABLE_COLUMNS])
 
 class DatasetServer:
     """
@@ -72,9 +76,6 @@ class DatasetServer:
         self.conn = sqlite3.connect(
             os.path.join(database_path, 'archive.db'))
 
-        cur = self.conn.cursor()
-        for c in TABLE_COLUMNS:
-            cur.execute("update archive set {} = IFNULL({}, '0')".format(c,c))
 
     def _init_checks_on_db(self):
         """
@@ -91,6 +92,11 @@ class DatasetServer:
         cur.execute('delete from archive where datetime < {}'.format(
             BEGINNING_OF_TIME))
 
+        # Replace all empty entries with zeros
+        for c in TABLE_COLUMNS:
+            cur.execute("update archive set {} = IFNULL({}, '0')".format(c, c))
+
+        # Check that first element begins at beginning of time
         cur.execute('select datetime from archive where datetime = {}'.format(
             BEGINNING_OF_TIME))
 
@@ -342,7 +348,7 @@ class DatasetServer:
         # Fetch data in list form
         data = cur.fetchall()
 
-        # Get only first 20 values
+        # Get only first n values ( the rest are none )
         data = [d[:20] for d in data]
 
         # Turn to np.array
@@ -360,20 +366,6 @@ class DatasetServer:
 
         for s in std:
             print "%.3f" % s
-
-    def _process_raw_sql_data(self, data):
-        # Get only relevant data
-        relevant_data = np.array([data[i] for i in RELEVANT_TABLE_COLUMNS])
-
-        # Normalize data
-        normalized_data = (relevant_data - RELEVANT_MEAN) / RELEVANT_STD
-
-        # Turn nans into zero
-        for i in range(len(normalized_data)):
-            if np.isnan(normalized_data[i]):
-                normalized_data[i] = 0
-
-        return normalized_data
 
     def get_data_by_daterange(self, datefrom, hours):
         """
@@ -400,9 +392,6 @@ class DatasetServer:
         # Fetch data in list form
         data = cur.fetchall()
 
-        # Use only first 20 values, the rest are Nones in this archive
-        data = [d[:20] for d in data]
-
         return data
 
     def get_training_batch(self, hour, batchsize):
@@ -425,22 +414,29 @@ class DatasetServer:
                                  TRAINING_VALIDATION_SPLIT_DATE,
                                  S_IN_DAY)
 
+
         # Select batchsize random days
-        random_vals = random.sample(range(0,len(available_values)), batchsize)
+        random_vals = random.sample(available_values, batchsize)
 
         # List which will hold the batch
         batch = []
 
         # Get values
         for val in random_vals:
+
             # Get values from database
             raw_values = self.get_data_by_daterange(val, BATCH_LENGTH_HOURS)
 
-            # Process values (use only neccessary values, normalize, etc)
-            processed_values = self._process_raw_sql_data(raw_values)
+            # Use only relevant values
+            relevant_values = [[d[i] for i in RELEVANT_TABLE_COLUMNS] for d in
+                          raw_values]
+
+            # Process values (normalize, etc)
+            normalized_data = [(np.array(d) - np.array(RELEVANT_MEAN)) /
+                               np.array(RELEVANT_STD) for d in relevant_values]
 
             # Append to our batch
-            batch.append(processed_values)
+            batch.append(normalized_data)
 
         assert len(batch[0]) == BATCH_LENGTH_HOURS * (3600 / SAMPLETIME_S)
 

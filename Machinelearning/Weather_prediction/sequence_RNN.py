@@ -8,7 +8,12 @@ class WeatherNetwork:
     Class of a recurrent neural network in TensorFlow which is built to predict
     immediate weather
     """
-    def __init__(self, input_dim, output_dim, n_time_steps, config):
+    def __init__(self,
+                 input_dim,
+                 output_dim,
+                 n_training_steps,
+                 n_prediction_steps,
+                 config):
 
         # Amount of variables that will be fed into the network at each time
         # step. This is the same as the input dimension of the network input.
@@ -22,7 +27,10 @@ class WeatherNetwork:
 
         # Amount of time steps we want to feed to the network before expecting
         # it to produce a classification of the future n time steps
-        self.n_time_steps = n_time_steps
+        self.n_training_steps = n_training_steps
+
+        # Amount of steps that Y will be predicting
+        self.n_prediction_steps = n_prediction_steps
 
         self.hidden_dim = config["hidden_dim"]
         self.dropout_keep_p = config["dropout_keep_p"]
@@ -30,7 +38,7 @@ class WeatherNetwork:
         self.learning_rate = config["learning_rate"]
 
         # Intialize the classifier (forecaster) network
-        self.init_RNN()
+        self._init_RNN()
 
         # Define an optimizer
         self.optimizer = tf.train.AdamOptimizer(
@@ -39,13 +47,17 @@ class WeatherNetwork:
         # Train step
         self.train_step = self.optimizer.minimize(self.cost)
 
-    def init_RNN(self):
+    def _init_RNN(self):
         # Input placeholder for single binary pair input
         self.X = tf.placeholder(dtype=tf.float32,
-                           shape=[None, self.n_time_steps, self.input_dim])
+                                shape=[None,
+                                       self.n_training_steps,
+                                       self.input_dim])
 
         # Output label
-        self.Y = tf.placeholder(dtype=tf.float32, shape=[None, self.output_dim])
+        self.Y = tf.placeholder(dtype=tf.float32, shape=[None,
+                                                         self.n_prediction_steps,
+                                                         self.output_dim])
 
         # Output weights
         self.w_out = tf.Variable(tf.random_normal(shape=[self.hidden_dim,
@@ -73,12 +85,28 @@ class WeatherNetwork:
 
         self.hidden_outputs = tf.transpose(self.hidden_outputs, [1, 0, 2])
 
-        # Take only the last hidden output
-        self.hidden_output = tf.gather(params=self.hidden_outputs,
-                           indices=int(self.hidden_outputs.get_shape()[0]) - 1)
+        # Take only the last n_prediction_steps outputs
+        self.hidden_predictions = tf.gather(params=self.hidden_outputs,
+                           indices=range(self.n_training_steps,
+                                         self.n_training_steps +
+                                         self.n_prediction_steps))
 
-        self.prediction = tf.nn.tanh(tf.matmul(self.hidden_output, self.w_out) +
-                                 self.b_out)
+        #self.hidden_predictions = tf.transpose(self.hidden_predictions,
+        #                                      [1, 0, 2])
 
-        self.cost = tf.square(self.prediction, self.Y)
+        #print self.hidden_predictions.get_shape()
+        #print self.w_out.get_shape()
+
+        self.unpacked_predictions = tf.unpack(self.hidden_predictions, )
+        self.unpacked_predictions = [tf.nn.tanh(tf.matmul(p, self.w_out) +
+            self.b_out) for p in self.unpacked_predictions]
+
+
+        self.packed_predictions = tf.pack(self.unpacked_predictions)
+        self.predict = tf.transpose(self.packed_predictions,
+                                               [1, 0, 2])
+
+        self.cost = tf.reduce_mean(tf.square(self.packed_predictions - self.Y))
+
+
 
