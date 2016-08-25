@@ -4,7 +4,9 @@
   "dropout_keep_p" : 0.5,
   "learning_rate" : 1e-3,
   "horizon_decay" : 0.9,
-  "learning_iterations" : 10000,
+  "learning_iterations" : 30000,
   "batchsize" : 24,
-  "iters_per_eval" : 30
+  "iters_per_eval" : 30,
+  "iters_per_checkpoint" : 100,
+  "mode" : "vis"
 }

@@ -12,6 +12,7 @@ import argparse
 import json
 import tensorflow as tf
 import os
+import matplotlib.pyplot as plt
 
 N_TIME_STEPS = 216
 
@@ -49,11 +50,54 @@ def main():
                              n_prediction_steps = 72,
                              config=config)
 
-    print 'Training network'
-    # Train the network
-    train_network(dataserver, seq_RNN, config)
+    if config["mode"] == 'train':
+        print 'Training network'
+        # Train the network
+        train_network(dataserver, seq_RNN, config, args.output_path)
+    if config["mode"] == 'vis':
+        print 'Visualizing network'
+        visualize_prediction(dataserver, seq_RNN, config, args.output_path)
 
-def train_network(dataserver, RNN, config):
+
+def visualize_prediction(dataserver, RNN, config, output_path):
+    # Start tensorflow session
+    session = tf.Session()
+
+    # Initialize all variables
+    session.run(tf.initialize_all_variables())
+
+    # Weight saver
+    saver = tf.train.Saver()
+
+    # Path where the checkpoint will be saved to / loaded from
+    model_path = os.path.join(output_path, "model.ckpt")
+
+    # Load from checkpoint if exists
+    if os.path.exists(model_path):
+        saver.restore(session, model_path)
+        print 'Checkpoint model.ckpt for prediction restored'
+    else:
+        'Model path not found, exiting'
+        return
+
+    # Make n visualizations
+    for i in range(10):
+        # Get data
+        batch = dataserver.get_validation_batch(0, 1)
+
+        # Get predictions from the network
+        predictions = session.run([RNN.predict],
+                                   feed_dict={RNN.X: batch[:, : N_TIME_STEPS]})
+
+        # Plot
+        x = np.arange(288)
+        plt.plot(x, batch[0, :, 4])
+        plt.plot(x, [0]*216 + list(predictions[0][0, :, 0]))
+        plt.show()
+
+
+
+def train_network(dataserver, RNN, config, output_path):
 
     # Amount of iterations
     iters = config['learning_iterations']
@@ -64,6 +108,16 @@ def train_network(dataserver, RNN, config):
     # Initialize all variables
     session.run(tf.initialize_all_variables())
 
+    # Weight saver
+    saver = tf.train.Saver()
+
+    # Path where the checkpoint will be saved to / loaded from
+    model_path = os.path.join(output_path, "model.ckpt")
+
+    # Load from checkpoint if exists
+    if os.path.exists(model_path):
+        saver.restore(session, model_path)
+        print 'Checkpoint model.ckpt restored'
 
     # Train
     for i in range(iters):
@@ -76,8 +130,8 @@ def train_network(dataserver, RNN, config):
                                  RNN.Y : batch[:, N_TIME_STEPS :,
                                          [INDEX_OF_OUTSIDE_TEMP]] })
 
-        print 'MSE on training batch: {}'.format(batch_err /
-                                                 config["batchsize"])
+        print '[Iteration: {} / {}] MSE on training batch: {}'.format(
+            i, iters, batch_err / config["batchsize"])
 
         if i % config["iters_per_eval"] == 0 and i > 0:
             # Get data
@@ -88,7 +142,16 @@ def train_network(dataserver, RNN, config):
                                          RNN.Y: batch[:, N_TIME_STEPS:,
                                                 [INDEX_OF_OUTSIDE_TEMP]] })
 
-            print 'MSE on validation batch: {}'.format(validation_err)
+            print 'VALIDATION: MSE on validation batch: {}'.format(
+                validation_err[
+                                                                  0] /
+                                                       config["batchsize"])
+
+
+        if i % config["iters_per_checkpoint"] == 0:
+            print 'Saving checkpoint'
+            saver.save(session, model_path)
+
 
 if __name__ == '__main__':
     main()
