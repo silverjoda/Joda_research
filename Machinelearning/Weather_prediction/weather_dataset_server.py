@@ -11,11 +11,6 @@ import sqlite3
 import matplotlib.pyplot as plt
 import numpy as np
 
-TABLE_COLUMNS = ['dateTime','usUnits','interval','barometer','pressure',
-                 'altimeter','inTemp','outTemp','inHumidity','outHumidity',
-                 'windSpeed','windDir','windGust','windGustDir','rainRAte',
-                 'rain','dewpoint','windchill','heatindex','ET']
-
 # Sampletime in seconds
 SAMPLETIME_S = 300
 
@@ -48,22 +43,20 @@ TRAINING_VALIDATION_SPLIT_DATE = int(BEGINNING_OF_TIME + int(N_DAYS_AVAILABLE *
 BATCH_LENGTH_HOURS = 24
 
 # Table moments:
-DATASET_MEAN = (1371556352.000, 1.000, 5.000, 30.025, 28.871, 30.023, 75.938,
-                50.707, 25.130, 75.224, 4.224, 176.058, 8.413, 178.360,
-                0.003, 0.000, 42.206, 49.454, 50.756, 0.000)
+DATASET_MEAN = [50.687202, 30.042913, 28.863577, 75.225151,
+                4.2221103, 173.68834, 8.4116125, 175.86951, 0.0027571502,
+                0.00016730967, 42.188217, 49.430134, 50.735664]
 
-DATASET_STD = (56542020.000, 0.000, 0.000, 0.242, 0.384, 0.339, 5.447,
-               15.278, 5.190, 16.635, 2.793, 105.779, 4.978, 105.065, 0.072,
-               0.002, 11.989, 16.581, 15.361, 0.002)
+DATASET_STD = [15.308222, 0.24120753, 0.38397667, 16.645607,
+               2.793514, 107.05489, 4.978723, 106.66589, 0.072300963,
+               0.0023934443, 12.016179, 16.617676, 15.394153]
 
-# Indeces of valid data elements from the sql table
-RELEVANT_TABLE_COLUMNS = [3,4,5,6,7,8,9,10,11,12,13,14,15,16,17]
+USED_COLUMNS = 'outTemp,barometer,pressure,outHumidity,windSpeed,' \
+               'windDir,windGust,windGustDir,rainRate,rain,dewpoint, ' \
+               'windchill,heatindex'
 
 # Amount of input variables
-INPUT_DIM = len(RELEVANT_TABLE_COLUMNS)
-
-RELEVANT_MEAN = np.array([DATASET_MEAN[i] for i in RELEVANT_TABLE_COLUMNS])
-RELEVANT_STD = np.array([DATASET_STD[i] for i in RELEVANT_TABLE_COLUMNS])
+INPUT_DIM = len(USED_COLUMNS.split(','))
 
 class DatasetServer:
     """
@@ -93,7 +86,7 @@ class DatasetServer:
             BEGINNING_OF_TIME))
 
         # Replace all empty entries with zeros
-        for c in TABLE_COLUMNS:
+        for c in USED_COLUMNS.split(','):
             cur.execute("update archive set {} = IFNULL({}, '0')".format(c, c))
 
         # Check that first element begins at beginning of time
@@ -342,30 +335,30 @@ class DatasetServer:
 
         cur = self.conn.cursor()
 
-        # Get all data
-        cur.execute('select * from archive')
+        # Declare lists for average and std
+        mean_list = []
+        std_list = []
 
-        # Fetch data in list form
-        data = cur.fetchall()
+        for c in USED_COLUMNS.split(','):
 
-        # Get only first n values ( the rest are none )
-        data = [d[:20] for d in data]
+            # Get all data
+            cur.execute('select {} from archive'.format(c))
 
-        # Turn to np.array
-        data = np.array(data, dtype=np.float32)
+            # Fetch data in list form
+            data = cur.fetchall()
 
-        print 'The following amout of nans has been found the in the set: ',  \
-              np.sum(np.isnan(data), axis=(0))
+            # Turn to np.array
+            data = np.array(data, dtype=np.float32)
 
-        # Get moments
-        mean = np.nanmean(data, axis=(0))
-        std = np.nanstd(data, axis=(0))
+            assert np.sum(np.isnan(data)) == 0, 'Nans found in data'
 
-        for m in mean:
-            print "%.3f" % m
+            # Get moments
+            mean_list.append(np.mean(data, axis=(0))[0])
+            std_list.append(np.std(data, axis=(0))[0])
 
-        for s in std:
-            print "%.3f" % s
+        print mean_list
+        print std_list
+        exit()
 
     def get_data_by_daterange(self, datefrom, hours):
         """
@@ -383,8 +376,9 @@ class DatasetServer:
         """
 
         cur = self.conn.cursor()
-        cur.execute('select * from archive where datetime between {} and {} '
-                    'order by dateTime asc'.format(datefrom,
+        cur.execute('select {} from archive where datetime between {} and {} '
+                    'order by dateTime asc'.format(USED_COLUMNS,
+                                                   datefrom,
                                                    datefrom +
                                                    hours * 3600 -
                                                    SAMPLETIME_S))
@@ -426,13 +420,9 @@ class DatasetServer:
             # Get values from database
             raw_values = self.get_data_by_daterange(val, BATCH_LENGTH_HOURS)
 
-            # Use only relevant values
-            relevant_values = [[d[i] for i in RELEVANT_TABLE_COLUMNS] for d in
-                          raw_values]
-
             # Process values (normalize, etc)
-            normalized_data = [(np.array(d) - np.array(RELEVANT_MEAN)) /
-                               np.array(RELEVANT_STD) for d in relevant_values]
+            normalized_data = [(np.array(d) - np.array(DATASET_MEAN)) /
+                               np.array(DATASET_STD) for d in raw_values]
 
             # Append to our batch
             batch.append(normalized_data)
@@ -472,13 +462,9 @@ class DatasetServer:
             # Get values from database
             raw_values = self.get_data_by_daterange(val, BATCH_LENGTH_HOURS)
 
-            # Use only relevant values
-            relevant_values = [[d[i] for i in RELEVANT_TABLE_COLUMNS] for d in
-                               raw_values]
-
             # Process values (normalize, etc)
-            normalized_data = [(np.array(d) - np.array(RELEVANT_MEAN)) /
-                               np.array(RELEVANT_STD) for d in relevant_values]
+            normalized_data = [(np.array(d) - np.array(DATASET_MEAN)) /
+                               np.array(DATASET_STD) for d in raw_values]
 
             # Append to our batch
             batch.append(normalized_data)
@@ -506,6 +492,10 @@ def main():
     # Make database object
     server = DatasetServer(args.input_path)
 
+    # Print dataset statistics
+    if PRINT_MOMENTS:
+        server._print_avg_and_std_of_dataset()
+
     # Test database
     if VISU_DATABASE:
         server._database_info()
@@ -516,9 +506,7 @@ def main():
     # Fix missing values
     server._fix_missing_values()
 
-    # Print dataset statistics
-    if PRINT_MOMENTS:
-        server._print_avg_and_std_of_dataset()
+
 
 
 if __name__ == '__main__':

@@ -37,6 +37,7 @@ class WeatherNetwork:
         self.n_layers = config["n_layers"]
         self.learning_rate = config["learning_rate"]
         self.horizon_decay = config["horizon_decay"]
+        self.l2_loss = config["l2_alpha"]
 
         # Intialize the classifier (forecaster) network
         self._init_RNN()
@@ -68,7 +69,8 @@ class WeatherNetwork:
         self.b_out = tf.Variable(tf.constant(0, dtype=tf.float32))
 
         # Single RNN cell (LSTM)
-        self.basic_cell = tf.nn.rnn_cell.BasicLSTMCell(self.hidden_dim)
+        self.basic_cell = tf.nn.rnn_cell.BasicLSTMCell(self.hidden_dim,
+                                                       state_is_tuple=True)
 
         # Add dropout
         self.basic_cell = tf.nn.rnn_cell.DropoutWrapper(self.basic_cell,
@@ -76,7 +78,8 @@ class WeatherNetwork:
 
         # Make the network multi-layer
         self.basic_cell = tf.nn.rnn_cell.MultiRNNCell([self.basic_cell] *
-                                                      self.n_layers)
+                                                      self.n_layers,
+                                                      state_is_tuple=True)
 
         # Symbolic hidden outputs of the whole unraveled RNN network
         self.hidden_outputs, _ = tf.nn.dynamic_rnn(cell=self.basic_cell,
@@ -112,7 +115,9 @@ class WeatherNetwork:
             self.cost += (self.horizon_decay ** i) * tf.square(
                 self.unpacked_predictions[i] - self.unpacked_Y[i])
 
-        self.cost = tf.reduce_mean(self.cost)
+        self.cost = tf.reduce_mean(self.cost) + self.l2_loss * tf.nn.l2_loss(
+            self.w_out)
 
+        self.lossfun = tf.reduce_mean(self.cost)
 
 

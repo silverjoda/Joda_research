@@ -4,7 +4,11 @@
 Script for training a sequence network on weather data
 """
 
-from weather_dataset_server import DatasetServer, INPUT_DIM
+from weather_dataset_server import (DatasetServer,
+                                    INPUT_DIM,
+                                    DATASET_MEAN,
+                                    DATASET_STD)
+
 from sequence_RNN import WeatherNetwork
 
 import numpy as np
@@ -15,8 +19,6 @@ import os
 import matplotlib.pyplot as plt
 
 N_TIME_STEPS = 216
-
-INDEX_OF_OUTSIDE_TEMP = 5
 
 def main():
     # Make input argument parser
@@ -91,10 +93,11 @@ def visualize_prediction(dataserver, RNN, config, output_path):
 
         # Plot
         x = np.arange(288)
-        plt.plot(x, batch[0, :, 4])
-        plt.plot(x, [0]*216 + list(predictions[0][0, :, 0]))
+        plt.plot(x, batch[0, :, 0]*DATASET_STD[0] + DATASET_MEAN[0])
+        plt.plot(x, np.array([0]*216 + list(predictions[0][0, :,0]),
+                             dtype=np.float32) * DATASET_STD[0] +
+                 DATASET_MEAN[0] )
         plt.show()
-
 
 
 def train_network(dataserver, RNN, config, output_path):
@@ -115,7 +118,7 @@ def train_network(dataserver, RNN, config, output_path):
     model_path = os.path.join(output_path, "model.ckpt")
 
     # Load from checkpoint if exists
-    if os.path.exists(model_path):
+    if os.path.exists(model_path) and config["load_from_checkpoint"]:
         saver.restore(session, model_path)
         print 'Checkpoint model.ckpt restored'
 
@@ -125,10 +128,10 @@ def train_network(dataserver, RNN, config, output_path):
         # Get data
         batch = dataserver.get_training_batch(0, config["batchsize"])
 
-        _, batch_err = session.run([RNN.train_step, RNN.cost],
+        _, batch_err = session.run([RNN.train_step, RNN.lossfun],
                     feed_dict = {RNN.X : batch[:, : N_TIME_STEPS],
                                  RNN.Y : batch[:, N_TIME_STEPS :,
-                                         [INDEX_OF_OUTSIDE_TEMP]] })
+                                         [0]] })
 
         print '[Iteration: {} / {}] MSE on training batch: {}'.format(
             i, iters, batch_err / config["batchsize"])
@@ -137,15 +140,13 @@ def train_network(dataserver, RNN, config, output_path):
             # Get data
             batch = dataserver.get_validation_batch(0, config["batchsize"])
 
-            validation_err = session.run([RNN.cost],
+            validation_err = session.run([RNN.lossfun],
                               feed_dict={RNN.X: batch[:, : N_TIME_STEPS],
                                          RNN.Y: batch[:, N_TIME_STEPS:,
-                                                [INDEX_OF_OUTSIDE_TEMP]] })
+                                                [0]] })
 
             print 'VALIDATION: MSE on validation batch: {}'.format(
-                validation_err[
-                                                                  0] /
-                                                       config["batchsize"])
+                validation_err[0] / config["batchsize"])
 
 
         if i % config["iters_per_checkpoint"] == 0:
