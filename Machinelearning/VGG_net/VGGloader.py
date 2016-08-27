@@ -2,9 +2,13 @@ import numpy as np
 import scipy.io
 import os
 
+#NOTE
+# The model has to be downloaded from the !!earlier archives!! otherwise
+# an error will occur when unpacking the weights
+
 input_path = '/home/shagas/Data/SW/Joda_storage/VGGweights/' \
           'imagenet-vgg-verydeep-16.mat'
-output_path = '/home/shagas/Data/SW/Joda_storage/VGGweights/checker/'
+output_path = '/home/shagas/Data/SW/Joda_storage/VGGweights/VGG16/'
 
 layers16 = (
         'conv1_1', 'relu1_1', 'conv1_2', 'relu1_2', 'pool1',
@@ -49,20 +53,20 @@ for i, name in enumerate(layers16):
         kernels, bias = weights[i][0][0][0][0]
         # matconvnet: weights are [width, height, in_channels, out_channels]
         # tensorflow: weights are [height, width, in_channels, out_channels]
+
         kernels = np.transpose(kernels, (1, 0, 2, 3))
-        #bias = bias.reshape(-1)
+        bias = bias.reshape(-1)
 
         print kernels.shape
-        #print bias.shape
-        #np.save(os.path.join(output_path, '{}_w'.format(name)), kernels)
-        #np.save(os.path.join(output_path, '{}_b'.format(name)), bias)
+
+        np.save(os.path.join(output_path, '{}_w'.format(i)), kernels)
+        np.save(os.path.join(output_path, '{}_b'.format(i)), bias)
 
     kind = name[:2]
     if kind == 'fc':
         w, b = weights[i][0][0][0][0]
 
-
         print w.shape
 
-        # np.save(os.path.join(output_path, '{}_w'.format(name)), kernels)
-        # np.save(os.path.join(output_path, '{}_b'.format(name)), bias)
+        np.save(os.path.join(output_path, '{}_w'.format(i)), w)
+        np.save(os.path.join(output_path, '{}_b'.format(i)), b)

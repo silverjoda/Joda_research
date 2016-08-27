@@ -1,8 +1,5 @@
 import tensorflow as tf
 
-# TODO: Check all the shapes on the RNN and correctly transpose if necessary
-
-
 class WeatherNetwork:
     """
     Class of a recurrent neural network in TensorFlow which is built to predict
@@ -100,7 +97,6 @@ class WeatherNetwork:
         self.unpacked_predictions = tf.unpack(self.hidden_predictions)
         self.unpacked_predictions = [tf.nn.tanh(tf.matmul(p, self.w_out) +
             self.b_out) for p in self.unpacked_predictions]
-
 
         # Prediction operation
         self.packed_predictions = tf.pack(self.unpacked_predictions)

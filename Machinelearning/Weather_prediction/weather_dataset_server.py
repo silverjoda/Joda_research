@@ -43,17 +43,26 @@ TRAINING_VALIDATION_SPLIT_DATE = int(BEGINNING_OF_TIME + int(N_DAYS_AVAILABLE *
 BATCH_LENGTH_HOURS = 24
 
 # Table moments:
-DATASET_MEAN = [50.687202, 30.042913, 28.863577, 75.225151,
+MEANS = [50.687202, 30.042913, 28.863577, 75.225151,
                 4.2221103, 173.68834, 8.4116125, 175.86951, 0.0027571502,
                 0.00016730967, 42.188217, 49.430134, 50.735664]
 
-DATASET_STD = [15.308222, 0.24120753, 0.38397667, 16.645607,
+STDS = [15.308222, 0.24120753, 0.38397667, 16.645607,
                2.793514, 107.05489, 4.978723, 106.66589, 0.072300963,
                0.0023934443, 12.016179, 16.617676, 15.394153]
 
-USED_COLUMNS = 'outTemp,barometer,pressure,outHumidity,windSpeed,' \
+TOTAL_COLUMNS = 'outTemp,barometer,pressure,outHumidity,windSpeed,' \
                'windDir,windGust,windGustDir,rainRate,rain,dewpoint, ' \
                'windchill,heatindex'
+
+USED_COLUMNS = 'outTemp,barometer,pressure,outHumidity,windSpeed'
+
+
+DATASET_MEAN = [50.687202, 30.042913, 28.863577, 75.225151,
+                4.2221103]
+
+DATASET_STD = [15.308222, 0.24120753, 0.38397667, 16.645607,
+               2.793514]
 
 # Amount of input variables
 INPUT_DIM = len(USED_COLUMNS.split(','))

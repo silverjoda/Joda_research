@@ -93,7 +93,7 @@ def visualize_prediction(dataserver, RNN, config, output_path):
 
         # Plot
         x = np.arange(288)
-        plt.plot(x, batch[0, :, 0]*DATASET_STD[0] + DATASET_MEAN[0])
+        plt.plot(x, batch[0, :, 0] * DATASET_STD[0] + DATASET_MEAN[0])
         plt.plot(x, np.array([0]*216 + list(predictions[0][0, :,0]),
                              dtype=np.float32) * DATASET_STD[0] +
                  DATASET_MEAN[0] )
