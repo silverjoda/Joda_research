@@ -7,13 +7,32 @@ import tensorflow as tf
 import numpy as np
 import os
 
+
+IMAGENET_MEAN = [103.939, 116.779, 123.68]
+
 class VGG_feature_extractor:
 
     def __init__(self, model_path):
+
+        # Path to vgg weights
         self.model_path = model_path
+
+        # VGG weights and biases
         self.params = self._make_vgg_weights()
 
+        # Input placeholder
+        self.X = tf.placeholder(shape=(224, 224, 3), dtype=tf.float32)
+
+        # Create tensorflow session
+        self.session = tf.Session()
+        self.session.run(tf.initialize_all_variables())
+
     def _make_vgg_weights(self):
+        """
+        Create the necessary VGG weights for the models
+        -------
+
+        """
 
         # Init empty dictionaries for weights and biases
         weights = {}
@@ -26,10 +45,19 @@ class VGG_feature_extractor:
             biases['b{}'.format(i + 1)] = tf.Variable(
                 np.load(os.path.join(self.model_path, 'b{}.npy'.format(i + 1))))
 
-
         return weights, biases
 
-    def VGG_extract_features(self, X):
+    def _VGG_forward_pass(self):
+        """
+        Forward pass of the VGG network
+        Parameters
+        ----------
+        X: tf tensor, input image with dims (224,224,3)
+
+        Returns tf tensor of the 4096 long feature vector
+        -------
+
+        """
 
         weights, biases = self.params
 
@@ -37,7 +65,7 @@ class VGG_feature_extractor:
 
         # Block 1
         l1 = tf.nn.relu(
-            tf.nn.conv2d(X, weights['w1'], conv_strides, 'SAME') +
+            tf.nn.conv2d(self.X, weights['w1'], conv_strides, 'SAME') +
             biases['b1'])
 
         l2 = tf.nn.relu(
@@ -120,3 +148,21 @@ class VGG_feature_extractor:
             biases['b15'])
 
         return l_fc1, l_fc2
+
+    def VGG_extract_features(self, input):
+        """
+        Extracts features from input image
+        Parameters
+        ----------
+        input: float32 ndarray, image
+
+        Returns
+        -------
+
+        """
+
+        if input.shape() != (224,224,3):
+            raise ValueError, "Image shape should be (224,224,3)"
+
+        return self.session.run(input, feed_dict = {self.X : input})
+
