@@ -18,8 +18,6 @@ import tensorflow as tf
 import os
 import matplotlib.pyplot as plt
 
-N_TIME_STEPS = 216
-
 def main():
     # Make input argument parser
     parser = argparse.ArgumentParser()
@@ -44,12 +42,13 @@ def main():
     # Create data server object
     dataserver = DatasetServer(args.input_path)
 
+
     print 'Loading Network'
     # Create sequence RNN object
     seq_RNN = WeatherNetwork(input_dim = INPUT_DIM,
                              output_dim= 1,
-                             n_training_steps= N_TIME_STEPS,
-                             n_prediction_steps = 72,
+                             n_training_steps= config["n_context_steps"],
+                             n_prediction_steps = config["n_prediction_steps"],
                              config=config)
 
     if config["mode"] == 'train':
@@ -79,24 +78,31 @@ def visualize_prediction(dataserver, RNN, config, output_path):
         saver.restore(session, model_path)
         print 'Checkpoint model.ckpt for prediction restored'
     else:
-        'Model path not found, exiting'
+        print 'Model path not found, exiting'
         return
 
     # Make n visualizations
     for i in range(10):
         # Get data
-        batch = dataserver.get_validation_batch(0, 1)
+        batch = dataserver.get_validation_batch(0, config["n_context_steps"]
+                                                + config["n_prediction_steps"],
+                                                1)
+        batch_norm = batch[0, :, 0] * DATASET_STD[0] + DATASET_MEAN[0]
 
         # Get predictions from the network
         predictions = session.run([RNN.predict],
-                                   feed_dict={RNN.X: batch[:, : N_TIME_STEPS]})
+                                   feed_dict={RNN.X : batch[:, : config[
+                                       "n_context_steps"]]})
+
+        predictions_norm = predictions[0][0, :,0] * DATASET_STD[0] + \
+                           DATASET_MEAN[0]
+
 
         # Plot
-        x = np.arange(288)
-        plt.plot(x, batch[0, :, 0] * DATASET_STD[0] + DATASET_MEAN[0])
-        plt.plot(x, np.array([0]*216 + list(predictions[0][0, :,0]),
-                             dtype=np.float32) * DATASET_STD[0] +
-                 DATASET_MEAN[0] )
+        x = np.arange(config["n_context_steps"] + config["n_prediction_steps"])
+
+        plt.plot(x, batch_norm)
+        plt.scatter(x[config["n_context_steps"]:], predictions_norm)
         plt.show()
 
 
@@ -126,11 +132,16 @@ def train_network(dataserver, RNN, config, output_path):
     for i in range(iters):
 
         # Get data
-        batch = dataserver.get_training_batch(0, config["batchsize"])
+        batch = dataserver.get_training_batch(-1,
+                                              config["n_context_steps"] +
+                                              config["n_prediction_steps"],
+                                              config["batchsize"])
 
         _, batch_err = session.run([RNN.train_step, RNN.lossfun],
-                    feed_dict = {RNN.X : batch[:, : N_TIME_STEPS],
-                                 RNN.Y : batch[:, N_TIME_STEPS :,
+                    feed_dict = {RNN.X : batch[:, : config[
+                                       "n_context_steps"]],
+                                 RNN.Y : batch[:, config[
+                                       "n_context_steps"] :,
                                          [0]] })
 
         print '[Iteration: {} / {}] MSE on training batch: {}'.format(
@@ -138,11 +149,16 @@ def train_network(dataserver, RNN, config, output_path):
 
         if i % config["iters_per_eval"] == 0 and i > 0:
             # Get data
-            batch = dataserver.get_validation_batch(0, config["batchsize"])
+            batch = dataserver.get_validation_batch(-1,
+                                                    config["n_context_steps"] +
+                                                    config["n_prediction_steps"],
+                                                    config["batchsize"])
 
             validation_err = session.run([RNN.lossfun],
-                              feed_dict={RNN.X: batch[:, : N_TIME_STEPS],
-                                         RNN.Y: batch[:, N_TIME_STEPS:,
+                              feed_dict={RNN.X: batch[:, : config[
+                                       "n_context_steps"]],
+                                         RNN.Y: batch[:, config[
+                                       "n_context_steps"]:,
                                                 [0]] })
 
             print 'VALIDATION: MSE on validation batch: {}'.format(

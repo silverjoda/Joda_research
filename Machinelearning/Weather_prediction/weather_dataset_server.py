@@ -23,6 +23,8 @@ BEGINNING_OF_TIME = 1273795200
 # Unix time of last sample
 END_OF_TIME = 1469577600
 
+END_OF_TRAINING = 1469577600 - (3600 * 24 * 64)
+
 # Amount of expected samples in the database after adjustment
 EXPECTED_SAMPLES = 1 + (END_OF_TIME - BEGINNING_OF_TIME) / SAMPLETIME_S
 
@@ -39,8 +41,6 @@ N_DAYS_AVAILABLE = (END_OF_TIME - BEGINNING_OF_TIME) / S_IN_DAY
 TRAINING_VALIDATION_SPLIT_DATE = int(BEGINNING_OF_TIME + int(N_DAYS_AVAILABLE *
                                      T_V_RATIO) * S_IN_DAY)
 
-# Amount of hours of each element
-BATCH_LENGTH_HOURS = 24
 
 # Table moments:
 MEANS = [50.687202, 30.042913, 28.863577, 75.225151,
@@ -78,6 +78,7 @@ class DatasetServer:
         self.conn = sqlite3.connect(
             os.path.join(database_path, 'archive.db'))
 
+        self.batch_counter = 0
 
     def _init_checks_on_db(self):
         """
@@ -369,7 +370,7 @@ class DatasetServer:
         print std_list
         exit()
 
-    def get_data_by_daterange(self, datefrom, hours):
+    def get_data_by_daterange(self, datefrom, sample_length):
         """
         Get values for a time period given in hours from a starting date given by
         unix time
@@ -389,7 +390,7 @@ class DatasetServer:
                     'order by dateTime asc'.format(USED_COLUMNS,
                                                    datefrom,
                                                    datefrom +
-                                                   hours * 3600 -
+                                                   sample_length * SAMPLETIME_S -
                                                    SAMPLETIME_S))
 
         # Fetch data in list form
@@ -397,12 +398,44 @@ class DatasetServer:
 
         return data
 
-    def get_training_batch(self, hour, batchsize):
+    def get_training_sequence_batch(self, offset_hours, sample_length, batchsize):
+
+        # Amount of offset in seconds
+        offset = offset_hours * 3600
+
+        # List which will hold the batch
+        batch = []
+
+        # Get values from database
+        raw_values = self.get_data_by_daterange(self.batch_counter *
+                                                sample_length * SAMPLETIME_S,
+                                                sample_length)
+
+        if self.batch_counter < (END_OF_TIME - sample_length * SAMPLETIME_S):
+            # Increment batch counter
+            self.batch_counter += 1
+        else:
+            self.batch_counter = 0
+
+
+
+        # Process values (normalize, etc)
+        normalized_data = [(np.array(d) - np.array(DATASET_MEAN)) /
+                           np.array(DATASET_STD) for d in raw_values]
+
+        # Append to our batch
+        batch.append(normalized_data)
+
+        assert len(batch[0]) == sample_length * SAMPLETIME_S
+
+        return np.array(batch, dtype=np.float32)
+
+    def get_training_batch(self, offset_hours, sample_length, batchsize):
         """
 
         Parameters
         ----------
-        hour: int, hour offset
+        offset_hours: int, hour offset from midnight
         size: int, batch size
 
         Returns np array batch of 24 hour sequences
@@ -410,7 +443,10 @@ class DatasetServer:
 
         """
         # Amount of offset in seconds
-        offset = hour * 3600
+        if offset_hours == -1:
+            offset = np.random.randint(0,24) * 3600
+        else:
+            offset = offset_hours * 3600
 
         # Vector of available values
         available_values = range(BEGINNING_OF_TIME + offset,
@@ -427,7 +463,7 @@ class DatasetServer:
         for val in random_vals:
 
             # Get values from database
-            raw_values = self.get_data_by_daterange(val, BATCH_LENGTH_HOURS)
+            raw_values = self.get_data_by_daterange(val, sample_length)
 
             # Process values (normalize, etc)
             normalized_data = [(np.array(d) - np.array(DATASET_MEAN)) /
@@ -436,11 +472,11 @@ class DatasetServer:
             # Append to our batch
             batch.append(normalized_data)
 
-        assert len(batch[0]) == BATCH_LENGTH_HOURS * (3600 / SAMPLETIME_S)
+        assert len(batch[0]) == sample_length
 
         return np.array(batch, dtype=np.float32)
 
-    def get_validation_batch(self, hour, batchsize):
+    def get_validation_batch(self, hour, sample_length, batchsize):
         """
 
         Parameters
@@ -469,7 +505,7 @@ class DatasetServer:
         # Get values
         for val in random_vals:
             # Get values from database
-            raw_values = self.get_data_by_daterange(val, BATCH_LENGTH_HOURS)
+            raw_values = self.get_data_by_daterange(val, sample_length)
 
             # Process values (normalize, etc)
             normalized_data = [(np.array(d) - np.array(DATASET_MEAN)) /
@@ -478,7 +514,8 @@ class DatasetServer:
             # Append to our batch
             batch.append(normalized_data)
 
-        assert len(batch[0]) == BATCH_LENGTH_HOURS * (3600 / SAMPLETIME_S)
+
+        assert len(batch[0]) == sample_length
 
         return np.array(batch, dtype=np.float32)
 
