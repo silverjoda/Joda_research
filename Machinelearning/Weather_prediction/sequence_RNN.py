@@ -36,6 +36,10 @@ class WeatherNetwork:
         self.horizon_decay = config["horizon_decay"]
         self.l2_loss = config["l2_alpha"]
 
+        # Set dropout percentage to zero if we are visualizing
+        if config["mode"] == 'vis':
+            self.dropout_keep_p = 1.
+
         # Intialize the classifier (forecaster) network
         self._init_RNN()
 
@@ -95,11 +99,11 @@ class WeatherNetwork:
         # Unpack the predictions into a list of length *n_prediction_steps*
         # and shapes [batch, output_dim]
         self.unpacked_predictions = tf.unpack(self.hidden_predictions)
-        self.unpacked_predictions = [tf.nn.tanh(tf.matmul(p, self.w_out) +
-            self.b_out) for p in self.unpacked_predictions]
+        self.unpacked_predictions_o = [(tf.matmul(up, self.w_out) +
+            self.b_out) for up in self.unpacked_predictions]
 
         # Prediction operation
-        self.packed_predictions = tf.pack(self.unpacked_predictions)
+        self.packed_predictions = tf.pack(self.unpacked_predictions_o)
         self.predict = tf.transpose(self.packed_predictions,
                                                [1, 0, 2])
 
@@ -109,7 +113,7 @@ class WeatherNetwork:
 
         for i in range(self.n_prediction_steps):
             self.cost += (self.horizon_decay ** i) * tf.square(
-                self.unpacked_predictions[i] - self.unpacked_Y[i])
+                self.unpacked_predictions_o[i] - self.unpacked_Y[i])
 
         self.cost = tf.reduce_mean(self.cost) + self.l2_loss * tf.nn.l2_loss(
             self.w_out)

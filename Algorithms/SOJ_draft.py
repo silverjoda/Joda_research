@@ -7,6 +7,11 @@ def readnum():
 def readline():
     return raw_input()
 
+def isprime(x):
+    for i in range(2,x):
+        if x % i == 0:
+            return True
+    return False
 
 # Amount of test cases
 n = readnum()
@@ -16,21 +21,12 @@ for i in range(n):
     # Getline:
     line = readline()
 
-    # Length of the line
-    length = len(line)
-
-    # String which we will iterate over:
-    str = line[:length/2]
+    a,b = line.split()
 
     # Do the stuff
-    for j,c in enumerate(str):
-
-        # skip every second char
-        if j % 2 != 0:
-            continue
-
-        # Print char without newline
-        sys.stdout.write(c)
+    for j in range(a,b):
+        if isprime(j):
+            print j
 
     # Skip line
     print

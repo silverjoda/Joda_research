@@ -82,29 +82,34 @@ def visualize_prediction(dataserver, RNN, config, output_path):
         return
 
     # Make n visualizations
-    for i in range(10):
+    for i in range(3):
         # Get data
-        batch = dataserver.get_validation_batch(0, config["n_context_steps"]
+        batch = dataserver.get_training_batch(0, config["n_context_steps"]
                                                 + config["n_prediction_steps"],
                                                 1)
-        batch_norm = batch[0, :, 0] * DATASET_STD[0] + DATASET_MEAN[0]
 
         # Get predictions from the network
         predictions = session.run([RNN.predict],
                                    feed_dict={RNN.X : batch[:, : config[
                                        "n_context_steps"]]})
 
-        predictions_norm = predictions[0][0, :,0] * DATASET_STD[0] + \
-                           DATASET_MEAN[0]
-
+        predictions_temp = predictions[0][0, :,0]
+        batch_pred = batch[0, :, 0]
 
         # Plot
         x = np.arange(config["n_context_steps"] + config["n_prediction_steps"])
 
-        plt.plot(x, batch_norm)
-        plt.scatter(x[config["n_context_steps"]:], predictions_norm)
-        plt.show()
+        plt.plot(x, batch_pred)
+        plt.scatter(x[config["n_context_steps"]:],
+                    predictions_temp,
+                    linewidths=1,
+                    marker='o',
+                    color='green')
 
+        plt.fill_between(range(540,540 + 36), -1, 1,
+                         facecolor='red',
+                         alpha=0.1)
+        plt.show()
 
 def train_network(dataserver, RNN, config, output_path):
 
