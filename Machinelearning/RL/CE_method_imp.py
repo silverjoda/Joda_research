@@ -118,22 +118,24 @@ def simulate(env, nn_controller):
         action = nn_controller.nn_forward_pass(np.array(observation), weights)
         observation, _, done, info = env.step(action[0].astype(int))
 
-
-def train_batch_episode(env, nn_controller, batchsize, n_steps_per_episode):
+def train_batch_episode(env,
+                        nn_controller,
+                        batchsize,
+                        n_steps_per_episode,
+                        elite_p_value):
 
     # Create weight instances from the means and std
     weight_list = nn_controller.create_n_weight_instances(batchsize)
 
     # List of the episode rewards for each of the generated weights
-    total_rewards = []
+    total_rewards = np.zeros((batchsize))
 
+
+    # Step 1)  Assign reward to all instances
     for n in range(batchsize):
 
         # Reset simulation for each weight instance
         observation = env.reset()
-
-        # Total reward for whole episode for this weight instance
-        total_reward = 0
 
         for t in range(n_steps_per_episode):
 
@@ -145,17 +147,43 @@ def train_batch_episode(env, nn_controller, batchsize, n_steps_per_episode):
             observation, reward, done, info = env.step(action)
 
             # Accumulate episode reward
-            total_reward += reward
+            total_rewards[n] += reward
 
             if done:
                 break
 
-        # Append the total reward for this instance
-        total_rewards.append(total_reward)
 
-    # === Test the new network and render it === #
-    done = False
+    # Step 2) Select the n best instances
+    best_indeces = total_rewards.argsort()[-elite_p_value:][::-1]
+    best_weights = [weight_list[i] for i in best_indeces]
+
+    # Step 3) Fit new Gaussian to the selected instances using ML estimate
+    new_means = [np.zeros(shape) for shape in nn_controller.weight_shapes]
+    new_stds = [np.zeros(shape) for shape in nn_controller.weight_shapes]
+
+    # Accumulate
+    for i,bws in enumerate(best_weights):
+        for j,bw in enumerate(bws):
+            new_means[j] += bw
+
+    # Divide
+    for w in new_means:
+        w /= elite_p_value
+
+    # Calc std
+    for i, bws in enumerate(best_weights):
+        for j, bw in enumerate(bws):
+            new_stds[j] += np.square(bw - new_means[j])
+
+    # Divide
+    for s in new_stds:
+        s /= (elite_p_value - 1)
+
+    # Step 3)  Test the new network and render it
     total_reward = 0
+
+    # Reset simulation
+    observation = env.reset()
 
     for t in range(n_steps_per_episode):
         env.render()
