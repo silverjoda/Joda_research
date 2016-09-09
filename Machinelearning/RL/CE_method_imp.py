@@ -60,9 +60,8 @@ class NN_controler:
             for j in range(self.n_layers):
                 weight = np.random.randn(*self.weight_means[j].shape)
 
-                # Subtract means and divide by std
-                weight -= self.weight_means[j]
-                weight /= self.weight_stds[j]
+                # Subtract means and times by std
+                weight = self.weight_stds[j] * weight + self.weight_means[j]
 
                 weight_list.append(weight)
 
@@ -103,9 +102,7 @@ class NN_controler:
         pass
 
 
-
-
-def simulate(env, nn_controller):
+def simulate(env, nn_controller, n_steps):
 
     # Reset simulation
     observation = env.reset()
@@ -113,16 +110,22 @@ def simulate(env, nn_controller):
     # Create weight instances from the means and std
     weights = nn_controller.create_n_weight_instances(1)
 
-    while True:
+    total_reward = 0
+
+    for i in range(n_steps):
         env.render()
         action = nn_controller.nn_forward_pass(np.array(observation), weights)
-        observation, _, done, info = env.step(action[0].astype(int))
+        observation, reward, done, info = env.step(action[0].astype(int))
+        total_reward += reward
+
+    return total_reward
 
 def train_batch_episode(env,
                         nn_controller,
                         batchsize,
                         n_steps_per_episode,
                         elite_p_value):
+
 
     # Create weight instances from the means and std
     weight_list = nn_controller.create_n_weight_instances(batchsize)
@@ -144,7 +147,7 @@ def train_batch_episode(env,
                                                    weight_list[n])
 
             # Perform step in the simulator
-            observation, reward, done, info = env.step(action)
+            observation, reward, done, info = env.step(action[0].astype(int))
 
             # Accumulate episode reward
             total_rewards[n] += reward
@@ -179,21 +182,9 @@ def train_batch_episode(env,
     for s in new_stds:
         s /= (elite_p_value - 1)
 
-    # Step 3)  Test the new network and render it
-    total_reward = 0
-
-    # Reset simulation
-    observation = env.reset()
-
-    for t in range(n_steps_per_episode):
-        env.render()
-        weight_list = nn_controller.create_n_weight_instances(1)
-        action = nn_controller.nn_forward_pass(np.array(observation),
-                                               weight_list)
-        observation, reward, done, info = env.step(action)
-        total_reward += reward
-
-    return total_reward
+    # Step 3) Update the network weights:
+    nn_controller.weight_means = new_means
+    nn_controller.weight_stds = new_stds
 
 
 def main():
@@ -202,7 +193,16 @@ def main():
     env = gym.make('CartPole-v0')
 
     # Amount of training episodes
-    n_episodes = 1000
+    n_episodes = 300
+
+    # Amount of steps per episode
+    n_steps_per_episode = 100
+
+    # Amount of nets per episode
+    batchsize = 100
+
+    # Amount of instances selected
+    elite_p_value = 15
 
     # Neural network architecture (nodes in layers)
     nn_architecture = (4, 8, 2, 1)
@@ -210,9 +210,22 @@ def main():
     # Make the controller network for the task
     nn_controller = NN_controler(nn_architecture)
 
-    # Simulate using the available weights
-    simulate(env, nn_controller)
+    # Train the network
+    for i in range(n_episodes):
+        train_batch_episode(env=env,
+                            nn_controller=nn_controller,
+                            batchsize=batchsize,
+                            n_steps_per_episode=n_steps_per_episode,
+                            elite_p_value=elite_p_value)
 
+        # Every nth iteration do some visuals
+        if i % 2 == 0:
+            reward = simulate(env=env,
+                              nn_controller=nn_controller,
+                              n_steps=50)
+            print 'Episode {} / {} : Reward: {}'.format(i, n_episodes, reward)
+
+    print 'Optimization phase has finished'
 
 
 if __name__ == "__main__":
