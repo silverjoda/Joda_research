@@ -1,9 +1,9 @@
 {
-  "hidden_dim" : 32,
-  "n_layers" : 2,
-  "dropout_keep_p" : 0.5,
-  "learning_rate" : 3e-3,
-  "l2_alpha" : 1e-7,
+  "hidden_dim" : 8,
+  "n_layers" : 1,
+  "dropout_keep_p" : 0.7,
+  "learning_rate" : 1e-4,
+  "l2_alpha" : 1e-3,
   "horizon_decay" : 0.97,
   "learning_iterations" : 30000,
   "batchsize" : 32,
@@ -11,6 +11,6 @@
   "n_prediction_steps" : 36,
   "iters_per_eval" : 50,
   "iters_per_checkpoint" : 100,
-  "mode" : "train",
+  "mode" : "vis",
   "load_from_checkpoint" : true
 }

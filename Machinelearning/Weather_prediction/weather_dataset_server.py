@@ -55,12 +55,12 @@ TOTAL_COLUMNS = 'outTemp,barometer,pressure,outHumidity,windSpeed,' \
                'windDir,windGust,windGustDir,rainRate,rain,dewpoint, ' \
                'windchill,heatindex'
 
-USED_COLUMNS = 'outTemp,barometer,pressure,outHumidity,windSpeed'
+USED_COLUMNS = 'outTemp,barometer,pressure'#,outHumidity,windSpeed'
 
 
-DATASET_MEAN = [50.687202, 30.042913, 28.863577, 75.225151, 4.2221103]
+DATASET_MEAN = [50.687202, 30.042913, 28.863577]#, 75.225151, 4.2221103]
 
-DATASET_STD = [15.308222, 0.24120753, 0.38397667, 16.645607, 2.793514]
+DATASET_STD = [15.308222, 0.24120753, 0.38397667]#, 16.645607, 2.793514]
 
 # Amount of input variables
 INPUT_DIM = len(USED_COLUMNS.split(','))

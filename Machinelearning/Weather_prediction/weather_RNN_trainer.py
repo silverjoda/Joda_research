@@ -9,7 +9,7 @@ from weather_dataset_server import (DatasetServer,
                                     DATASET_MEAN,
                                     DATASET_STD)
 
-from sequence_RNN import WeatherNetwork
+from sequence_RNN import WeatherNetwork, FFNetwork
 
 import numpy as np
 import argparse
@@ -45,11 +45,17 @@ def main():
 
     print 'Loading Network'
     # Create sequence RNN object
-    seq_RNN = WeatherNetwork(input_dim = INPUT_DIM,
-                             output_dim= 1,
-                             n_training_steps= config["n_context_steps"],
-                             n_prediction_steps = config["n_prediction_steps"],
-                             config=config)
+    # seq_RNN = WeatherNetwork(input_dim = INPUT_DIM,
+    #                          output_dim= 1,
+    #                          n_training_steps= config["n_context_steps"],
+    #                          n_prediction_steps = config["n_prediction_steps"],
+    #                          config=config)
+
+    seq_RNN = FFNetwork(input_dim = INPUT_DIM,
+                        output_dim= 1,
+                        n_training_steps= config["n_context_steps"],
+                        n_prediction_steps = config["n_prediction_steps"],
+                        config=config)
 
     if config["mode"] == 'train':
         print 'Training network'

@@ -1,232 +1,137 @@
-import gym
 import numpy as np
+import gym
 import math
-import os.path
+from gym.spaces import Discrete, Box
 
-# statespace: [x, x_dot, theta, theta_dot = state]
-# actionspace: {0,1}
+# ================================================================
+# Policies
+# ================================================================
 
-class NN_controler:
-    def __init__(self, architecture):
+class DeterministicDiscreteActionLinearPolicy(object):
 
-        # Shapes of the weights of the network
-        self.weight_shapes = [(j, i) for i, j in
-                         zip(architecture[:-1], architecture[1:])]
-
-        # Amount of layers that the network contains
-        self.n_layers = len(self.weight_shapes)
-
-        # Initial weight mean and std
-        self.init_weight_mean = 0
-        self.init_weight_std = 1
-
-        # Declare initial weights
-        self.weight_means = self.init_weights()
-        self.weight_stds = self.init_weights()
-
-    def init_weights(self):
+    def __init__(self, theta, ob_space, ac_space):
         """
-        Initialize the weights
-        Returns initialized weights
-        -------
-
+        dim_ob: dimension of observations
+        n_actions: number of actions
+        theta: flat vector of parameters
         """
-        return [(np.random.randn(*shape) + self.init_weight_mean) /
-                self.init_weight_std for shape in self.weight_shapes]
+        dim_ob = ob_space.shape[0]
+        n_actions = ac_space.n
+        assert len(theta) == (dim_ob + 1) * n_actions
+        self.W = theta[0 : dim_ob * n_actions].reshape(dim_ob, n_actions)
+        self.b = theta[dim_ob * n_actions : None].reshape(1, n_actions)
 
-
-    def create_n_weight_instances(self, n):
+    def act(self, ob):
         """
-        Draw n weight instances from the weight means and stds
-        Parameters
-        ----------
-        n: int, amount of instances to be generated
-
-        Returns: list of lists of np array matrices which are the instances
-        of the weights
-        -------
-
         """
+        y = ob.dot(self.W) + self.b
+        a = y.argmax()
+        return a
 
-        # Declare instances list
-        weight_instances = []
+class DeterministicContinuousActionLinearPolicy(object):
 
-        # Loop over n instances
-        for i in range(n):
-
-            # List of weights for one instance of the network weights
-            weight_list = []
-
-            for j in range(self.n_layers):
-                weight = np.random.randn(*self.weight_means[j].shape)
-
-                # Subtract means and times by std
-                weight = self.weight_stds[j] * weight + self.weight_means[j]
-
-                weight_list.append(weight)
-
-            weight_instances.append(weight_list)
-
-        if n == 1:
-            return weight_instances[0]
-        else:
-            return weight_instances
-
-
-    def nn_forward_pass(self, X, weights):
+    def __init__(self, theta, ob_space, ac_space):
         """
-        Performs forward pass on the network given by weights and input X
-        Parameters
-        ----------
-        X: np array with shape (input_dim)
-        weights: list of np array matrices
-
-        Returns: np array of the final layer vector
-        -------
-
+        dim_ob: dimension of observations
+        dim_ac: dimension of action vector
+        theta: flat vector of parameters
         """
+        self.ac_space = ac_space
+        dim_ob = ob_space.shape[0]
+        dim_ac = ac_space.shape[0]
+        assert len(theta) == (dim_ob + 1) * dim_ac
+        self.W = theta[0 : dim_ob * dim_ac].reshape(dim_ob, dim_ac)
+        self.b = theta[dim_ob * dim_ac : None]
 
-        # Current layer
-        layer = X
+    def act(self, ob):
+        a = np.clip(ob.dot(self.W) + self.b, self.ac_space.low, self.ac_space.high)
+        return a
 
-        # Forward pass for all layers (matmul + relu)
-        for w in weights:
-            layer = np.maximum(0, np.matmul(w, layer))
+def do_episode(policy, env, num_steps, render=False):
+    total_rew = 0
+    ob = env.reset()
+    for t in range(num_steps):
+        a = policy.act(ob)
+        (ob, reward, done, _info) = env.step(a)
+        total_rew += reward
+        if render and t%3==0: env.render()
+        if done: break
+    return total_rew
 
-        return np.sign(layer)
+env = None
+def noisy_evaluation(theta):
+    policy = make_policy(theta)
+    rew = do_episode(policy, env, num_steps)
+    return rew
 
-    def load_weights(self):
-        pass
+def make_policy(theta):
+    if isinstance(env.action_space, Discrete):
+        return DeterministicDiscreteActionLinearPolicy(theta,
+            env.observation_space, env.action_space)
+    elif isinstance(env.action_space, Box):
+        return DeterministicContinuousActionLinearPolicy(theta,
+            env.observation_space, env.action_space)
+    else:
+        raise NotImplementedError
 
-    def save_weights(self):
-        pass
+# Task settings [ CartPole-v0, Pendulum-v0, Acrobot-v1, MountainCar-v0]
+env = gym.make('MountainCar-v0') # Change as needed
+num_steps = 500 # maximum length of episode
+# Alg settings:
+n_iter = 100 # number of iterations of CEM
+batch_size = 25 # number of samples per batch
+elite_frac = 0.2 # fraction of samples used as elite set
 
+if isinstance(env.action_space, Discrete):
+    dim_theta = (env.observation_space.shape[0]+1) * env.action_space.n
+elif isinstance(env.action_space, Box):
+    dim_theta = (env.observation_space.shape[0]+1) * env.action_space.shape[0]
+else:
+    raise NotImplementedError
 
-def simulate(env, nn_controller, n_steps):
+# Initialize mean and standard deviation
+theta_mean = np.zeros(dim_theta)
+theta_std = np.ones(dim_theta)
 
-    # Reset simulation
-    observation = env.reset()
+def weighted_avg_and_std(values, weights):
+    """
+    Return the weighted average and standard deviation.
 
-    # Create weight instances from the means and std
-    weights = nn_controller.create_n_weight_instances(1)
+    values, weights -- Numpy ndarrays with the same shape.
+    """
+    average = np.average(values, weights=weights, axis=0)
+    variance = np.average((values-average)**2, weights=weights, axis=0)  # Fast
 
-    total_reward = 0
+    # and numerically precise
+    return (average, np.sqrt(variance))
 
-    for i in range(n_steps):
-        env.render()
-        action = nn_controller.nn_forward_pass(np.array(observation), weights)
-        observation, reward, done, info = env.step(action[0].astype(int))
-        total_reward += reward
+# Now, for the algorithm
+for iteration in xrange(n_iter):
 
-    return total_reward
+    # Sample parameter vectors
+    thetas = np.random.randn(batch_size, theta_mean.shape[0])
+    thetas += theta_mean
+    thetas *= theta_std
 
-def train_batch_episode(env,
-                        nn_controller,
-                        batchsize,
-                        n_steps_per_episode,
-                        elite_p_value):
-
-
-    # Create weight instances from the means and std
-    weight_list = nn_controller.create_n_weight_instances(batchsize)
-
-    # List of the episode rewards for each of the generated weights
-    total_rewards = np.zeros((batchsize))
-
-
-    # Step 1)  Assign reward to all instances
-    for n in range(batchsize):
-
-        # Reset simulation for each weight instance
-        observation = env.reset()
-
-        for t in range(n_steps_per_episode):
-
-            # Choose action according to the given observation
-            action = nn_controller.nn_forward_pass(np.array(observation),
-                                                   weight_list[n])
-
-            # Perform step in the simulator
-            observation, reward, done, info = env.step(action[0].astype(int))
-
-            # Accumulate episode reward
-            total_rewards[n] += reward
-
-            if done:
-                break
-
-
-    # Step 2) Select the n best instances
-    best_indeces = total_rewards.argsort()[-elite_p_value:][::-1]
-    best_weights = [weight_list[i] for i in best_indeces]
-
-    # Step 3) Fit new Gaussian to the selected instances using ML estimate
-    new_means = [np.zeros(shape) for shape in nn_controller.weight_shapes]
-    new_stds = [np.zeros(shape) for shape in nn_controller.weight_shapes]
-
-    # Accumulate
-    for i,bws in enumerate(best_weights):
-        for j,bw in enumerate(bws):
-            new_means[j] += bw
-
-    # Divide
-    for w in new_means:
-        w /= elite_p_value
-
-    # Calc std
-    for i, bws in enumerate(best_weights):
-        for j, bw in enumerate(bws):
-            new_stds[j] += np.square(bw - new_means[j])
-
-    # Divide
-    for s in new_stds:
-        s /= (elite_p_value - 1)
-
-    # Step 3) Update the network weights:
-    nn_controller.weight_means = new_means
-    nn_controller.weight_stds = new_stds
+    rewards = [noisy_evaluation(theta) for theta in thetas]
 
 
-def main():
+    # Get elite parameters
+    n_elite = int(batch_size * elite_frac)
+    elite_inds = np.argsort(rewards)[batch_size - n_elite:batch_size]
+    elite_thetas = [thetas[i] for i in elite_inds]
 
-    # Make the environment and reset
-    env = gym.make('CartPole-v0')
+    # Update theta_mean, theta_std
+    theta_mean = np.mean(elite_thetas, axis=0)
+    theta_std = np.std(elite_thetas, axis=0)
 
-    # Amount of training episodes
-    n_episodes = 300
+    #theta_mean, theta_std = weighted_avg_and_std(thetas, rewards)
 
-    # Amount of steps per episode
-    n_steps_per_episode = 100
+    # Add additional noise to std to prevent premature convergence
+    #theta_std += (np.exp( -iteration * 0.05) * 0.1)
 
-    # Amount of nets per episode
-    batchsize = 100
+    print "iteration %i. mean f: %8.3g. max f: %8.3g"%(iteration,
+                                                       np.mean(rewards),
+                                                       np.max(rewards))
 
-    # Amount of instances selected
-    elite_p_value = 15
-
-    # Neural network architecture (nodes in layers)
-    nn_architecture = (4, 8, 2, 1)
-
-    # Make the controller network for the task
-    nn_controller = NN_controler(nn_architecture)
-
-    # Train the network
-    for i in range(n_episodes):
-        train_batch_episode(env=env,
-                            nn_controller=nn_controller,
-                            batchsize=batchsize,
-                            n_steps_per_episode=n_steps_per_episode,
-                            elite_p_value=elite_p_value)
-
-        # Every nth iteration do some visuals
-        if i % 2 == 0:
-            reward = simulate(env=env,
-                              nn_controller=nn_controller,
-                              n_steps=50)
-            print 'Episode {} / {} : Reward: {}'.format(i, n_episodes, reward)
-
-    print 'Optimization phase has finished'
-
-
-if __name__ == "__main__":
-    main()
+    do_episode(make_policy(theta_mean), env, num_steps, render=True)
