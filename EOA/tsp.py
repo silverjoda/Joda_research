@@ -1,5 +1,9 @@
 import networkx as nx
 import matplotlib.pyplot as plt
+import random
+
+# TODO: Write fitness function
+# TODO: Write local search optimization
 
 # ======== Define simulation parameters
 n_Vertices = 20 # Amount of vertices (only valid if generating random graph)
@@ -7,45 +11,72 @@ n_ts = 3 # Amount of travelling salesmen
 n_iters = 1000 # Amount of iterations for algorithm
 algorithm = 'local' # Choose algorithm from {local, evo, meme}
 
+class Solver:
+    def __init__(self):
+        pass
+
 def main():
     """
     Run the main multi-traveller TSP optimization
 
     """
 
-    # Generate random undirected connected graph of n_V vertices
-    G = generate_random_tsp_graph(n_Vertices)
+    # Generate a random complete undirected graph of n_V vertices
+    # The first vertex is the Depot!
+    G = generate_random_tsp_vertices(n_Vertices)
 
     # Make a solver object
     if algorithm == 'local':
-        from tsp_local_search import local_solver
-        solver = local_solver(G, n_ts)
+        local_search(G)
     elif algorithm == 'evo':
-        from tsp_local_search import evo_solver
-        solver = evo_solver(G, n_ts)
+        evo_search(G)
     elif algorithm == 'meme':
-        from tsp_local_search import meme_solver
-        solver = meme_solver(G, n_ts)
+        meme_search(G)
     else:
-        solver = None
         print 'Error, algorithm not found, exiting simulation. '
         exit()
 
-    # Perform optimization for n_iters amount
-    for i in range(n_iters):
 
-        # Compute solution to problem
-        solution = solver.solve(G)
+
+def local_search(G_in):
+
+    # Deep copy the graph
+    G = G_in[:]
+
+    # First vertex is the depot
+    depot = G[0]
+    del G[0]
+
+    # Shuffle graph
+    random.shuffle(G)
+
+    # Initial boundaries that separate individual agent sequences
+    boundaries = [(len(G) / n_ts) * i for i in xrange(1, n_ts)]
+
+    # Define solution: [sequence, boundaries]
+    solution = [G, boundaries]
+
+    # Refine G n_iters times using local_search
+    for i in xrange(n_iters):
 
         # Perform an evaluation of current solution on graph G
-        fitness = solution_fitness(G, solution)
+        solution_info = solution_fitness(solution, depot)
+
+        # Print information
+        if i % (n_iters / 100):
+            print "Iter: {}/{}: Fitness: {}".format(i, n_iters, solution_info)
 
         # Perform optimization step
-        solver.update()
 
 
 
-def solution_fitness(G, sol):
+def evo_search(G):
+    pass
+
+def meme_search(G):
+    pass
+
+def solution_fitness(solution, depot):
     """
     Compute the fitness to solution given graph G
 
@@ -58,12 +89,11 @@ def solution_fitness(G, sol):
     -------
 
     """
+
     return None
 
-def generate_graph_from_input(input):
-    return None
 
-def generate_random_tsp_graph(m):
+def generate_random_tsp_vertices(m):
     return None
 
 if __name__ == "__main__":
