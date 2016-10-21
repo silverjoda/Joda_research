@@ -6,11 +6,12 @@ import math
 # TODO: Write local search optimization
 
 # ======== Define simulation parameters
-n_Vertices = 20 # Amount of vertices (only valid if generating random graph)
+n_Vertices = 12 # Amount of vertices (only valid if generating random graph)
 n_ts = 3 # Amount of travelling salesmen
-n_iters = 1000 # Amount of iterations for algorithm
+n_iters = 50000 # Amount of iterations for algorithm
 algorithm = 'local' # Choose algorithm from {local, evo, meme}
 vertex_xy_range = [0,1000] # Range of coordinates that vertices can have
+depot_xy_range = [400,600] # Range of coordinates that depot can have
 
 class Solver:
     def __init__(self):
@@ -43,7 +44,32 @@ def main():
 
 
 def plot_graph(G, boundaries, depot):
-    plt.scatter([v[0] for v in G], [v[1] for v in G])
+
+    # Scatter vertices
+    plt.cla()
+    plt.scatter(depot[0], depot[1], color='red')
+    plt.scatter([v[0] for v in G], [v[1] for v in G], color='blue')
+
+    # Plot agent paths
+    plot_boundaries = boundaries[:]
+    plot_boundaries.insert(0, 0)
+    plot_boundaries.insert(len(plot_boundaries), len(G))
+
+    colors = ['c','m','y','k','r','g','b']
+
+    for i in range(len(plot_boundaries) - 1):
+        # Get x and y coordinates of the route
+        G_xs = [v[0] for v in G[plot_boundaries[i]:plot_boundaries[i + 1]]]
+        G_ys = [v[1] for v in G[plot_boundaries[i]:plot_boundaries[i + 1]]]
+
+        # Insert depo coordinates
+        G_xs.insert(0, depot[0])
+        G_xs.insert(len(G_xs), depot[0])
+        G_ys.insert(0, depot[1])
+        G_ys.insert(len(G_ys), depot[1])
+
+        plt.plot(G_xs, G_ys, color=colors[i])
+
 
 def local_search(G_in):
 
@@ -57,6 +83,7 @@ def local_search(G_in):
     # Length of sequence
     seq_length = len(G)
 
+
     # Shuffle graph
     random.shuffle(G)
 
@@ -69,9 +96,6 @@ def local_search(G_in):
     # Best fitness so far
     best_fitness = 0
 
-    plot_graph(G, boundaries, depot)
-
-    exit()
 
     # Refine G n_iters times using local_search
     for i in xrange(n_iters):
@@ -80,10 +104,12 @@ def local_search(G_in):
         solution_info = solution_fitness(solution, depot)
 
         # Print information
-        if i % (n_iters / 100):
+        if i % (n_iters / 100) == 0:
             print "Iter: {}/{}: Fitness: {}".format(i, n_iters, solution_info)
 
-        plot_graph(G, boundaries, depot)
+        if i % (n_iters / 10) == 0:
+            plot_graph(G, boundaries, depot)
+            plt.pause(0.1)
 
         # Perform optimization step: ===========
 
@@ -102,45 +128,48 @@ def local_search(G_in):
         if fitness > best_fitness:
             best_fitness = fitness
         else:
-            v_tmp = G[rand_v2]
-            G[rand_v2] = G[rand_v1]
-            G[rand_v1] = v_tmp
+            # Swap back with small probability
+            if random.random() < 0.95:
+                v_tmp = G[rand_v2]
+                G[rand_v2] = G[rand_v1]
+                G[rand_v1] = v_tmp
 
-        # # Move boundaries
-        # old_boundaries = boundaries[:]
-        #
-        # for m in range(len(boundaries)):
-        #
-        #     # Change with small probability
-        #     if random.random() < 0.1:
-        #         rand_shift = random.randint(0, 2) - 1
-        #
-        #         if rand_shift == -1:
-        #             if m > 0:
-        #                 if boundaries[m] > boundaries[m - 1] + 1:
-        #                     boundaries[m] -= 1
-        #             elif boundaries[m] - 1 > 1:
-        #                 boundaries[m] -= 1
-        #
-        #         elif rand_shift == 1:
-        #             if m < len(boundaries) - 1:
-        #                 if boundaries[m] < boundaries[m + 1] - 1:
-        #                     boundaries[m] += 1
-        #             elif boundaries[m] + 1 < seq_length:
-        #                 boundaries[m] += 1
-        #
-        #
-        #                 # Evaluate new solution
-        #     fitness = solution_fitness(solution, depot)
-        #
-        #     # If worse then swap back
-        #     if fitness > best_fitness:
-        #         best_fitness = fitness
-        #     else:
-        #         boundaries = old_boundaries[:]
+        # Move boundaries
+        old_boundaries = boundaries[:]
+
+        for m in range(len(boundaries)):
+
+            # Change with small probability
+            if random.random() < 0.2:
+                rand_shift = random.randint(0, 2) - 1
+
+                if rand_shift == -1:
+                    if m > 0:
+                        if boundaries[m] > boundaries[m - 1] + 1:
+                            boundaries[m] -= 1
+                    elif boundaries[m] - 1 > 1:
+                        boundaries[m] -= 1
+
+                elif rand_shift == 1:
+                    if m < len(boundaries) - 1:
+                        if boundaries[m] < boundaries[m + 1] - 1:
+                            boundaries[m] += 1
+                    elif boundaries[m] + 1 < seq_length:
+                        boundaries[m] += 1
 
 
+                    # Evaluate new solution
+        fitness = solution_fitness(solution, depot)
 
+        # If worse then swap back
+        if fitness > best_fitness:
+            best_fitness = fitness
+        else:
+            if random.random() < 0.95:
+                boundaries = old_boundaries[:]
+
+
+    plt.pause(5)
 
 
 def evo_search(G):
@@ -170,7 +199,7 @@ def solution_fitness(solution, depot):
     # Total length of tour(s)
     tour_lengths = []
 
-    for n in range(len(boundaries)):
+    for n in range(len(boundaries) - 1):
 
         # Start by taking length from depot to first vertex
         tour_length = distance(depot, sequence[0])
@@ -222,6 +251,11 @@ def generate_random_tsp_vertices(m):
     for i in range(m):
         G.append([random.randint(vertex_xy_range[0], vertex_xy_range[1]),
                   random.randint(vertex_xy_range[0], vertex_xy_range[1])])
+
+    # Generate depot separately so it's close to the center
+
+    G[0] = [random.randint(depot_xy_range[0], depot_xy_range[1]),
+            random.randint(depot_xy_range[0], depot_xy_range[1])]
 
     return G
 
