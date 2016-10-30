@@ -13,6 +13,9 @@ algorithm = 'local' # Choose algorithm from {local, evo, meme}
 vertex_xy_range = [0,1000] # Range of coordinates that vertices can have
 depot_xy_range = [400,600] # Range of coordinates that depot can have
 n_random_perms = n_Vertices*5 # Amount of random permutations
+fitness_scaling_constant = 1e6 # Scale the fitness for visual convenience
+path_distance_delta_penalty = 5 # Constant which penalizes the difference
+# between max and min tours
 
 class Solver:
     def __init__(self):
@@ -121,7 +124,9 @@ def local_search(G_in):
 
         for n in xrange(n_random_perms):
 
-            # # Generate two random numbers
+            # SWAP VERTICES ==========================
+
+            #  Generate two random numbers
             rand_v1, rand_v2 = generate_two_unique_random_numbers(0, seq_length)
 
             # Swap the corresponding vertices
@@ -129,10 +134,37 @@ def local_search(G_in):
             G[rand_v2] = G[rand_v1]
             G[rand_v1] = v_tmp
 
+            # # SWAP BOUNDARIES ========================
+            #
+            # # Generate random boundary index
+            # rand_b = random.randint(0, len(boundaries) - 1)
+            # rand_swap_dir = random.randint(-1,1)
+            #
+            # # Augmented boundaries
+            # aug_bound = boundaries[:]
+            # aug_bound.insert(0, 0)
+            # aug_bound.insert(len(aug_bound), seq_length - 1)
+            #
+            # boundaries_swapped = False
+            #
+            # if random.random() > 0.8:
+            #     if rand_swap_dir == 1:
+            #         if aug_bound[rand_b] + 1 < aug_bound[rand_swap_dir]:
+            #             # Perform operation
+            #             boundaries_swapped = True
+            #     elif rand_swap_dir == -1:
+            #         if aug_bound[rand_b] - 1 > aug_bound[rand_swap_dir]:
+            #             # Perform operation
+            #             boundaries_swapped = True
+            #
+            # boundaries[rand_b] += rand_swap_dir
+
+            # EVALUATE AND UPDATE ====================
+
             # Evaluate new solution
             fitness = solution_fitness(solution, depot)
 
-            # If worse then swap back
+
             if fitness > best_iteration_fitness:
                 best_iteration_fitness = fitness
                 best_swap = (rand_v1, rand_v2)
@@ -142,13 +174,15 @@ def local_search(G_in):
             G[rand_v2] = G[rand_v1]
             G[rand_v1] = v_tmp
 
+            #boundaries[rand_b] -= rand_swap_dir
+
 
         if best_swap is not None:
             # Swap the best greedy solution
             v_tmp = G[best_swap[0]]
             G[best_swap[0]] = G[best_swap[1]]
             G[best_swap[1]] = v_tmp
-
+            #boundaries[best_swap[2]] += best_swap[3]
 
 
 
@@ -183,21 +217,21 @@ def solution_fitness(solution, depot):
     tour_lengths = []
 
     # Augmented boundaries
-    plot_boundaries = boundaries[:]
-    plot_boundaries.insert(0, 0)
-    plot_boundaries.insert(len(plot_boundaries), len(sequence) - 1)
+    aug_boundaries = boundaries[:]
+    aug_boundaries.insert(0, 0)
+    aug_boundaries.insert(len(aug_boundaries), len(sequence) - 1)
 
-    for n in range(len(plot_boundaries) - 1):
+    for n in range(len(aug_boundaries) - 1):
 
         # Start by taking length from depot to first vertex
-        tour_length = distance(depot, sequence[plot_boundaries[n]])
+        tour_length = distance(depot, sequence[aug_boundaries[n]])
 
         # Go over each vertex and increment length
-        for i in range(plot_boundaries[n], plot_boundaries[n + 1]):
+        for i in range(aug_boundaries[n], aug_boundaries[n + 1]):
             tour_length += distance(sequence[i], sequence[i + 1])
 
         # Add distance from last vertex to depot
-        tour_length += distance(sequence[plot_boundaries[n + 1]], depot)
+        tour_length += distance(sequence[aug_boundaries[n + 1]], depot)
 
         # Add to total tour length
         tour_lengths.append(tour_length)
@@ -206,13 +240,14 @@ def solution_fitness(solution, depot):
     total_tour_length = sum(tour_lengths)
 
     # Penalize for the maximum tour length (force all to be equal length)
-    max_tourlength_penalty = 0 #max(tour_lengths)
+    max_tourlength_penalty = max(tour_lengths) - min(tour_lengths)
 
     # Add all components of penalty
-    total_penalty = total_tour_length + max_tourlength_penalty
+    total_penalty = total_tour_length + \
+                    max_tourlength_penalty*path_distance_delta_penalty
 
     # We want fitness to be lower with higher penalty
-    fitness = 10000*(1/total_penalty)
+    fitness = fitness_scaling_constant*(1/total_penalty)
 
     return fitness
 
@@ -246,6 +281,7 @@ def generate_random_tsp_vertices(m):
             random.randint(depot_xy_range[0], depot_xy_range[1])]
 
     return G
+
 
 def generate_two_unique_random_numbers(low, high):
 
