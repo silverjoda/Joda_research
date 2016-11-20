@@ -1,15 +1,13 @@
 import matplotlib.pyplot as plt
 import random
 import math
-
-# TODO: Write fitness function
-# TODO: Write local search optimization
+import numpy as np
 
 # ======== Define simulation parameters
-n_Vertices = 24 # Amount of vertices (only valid if generating random graph)
+n_Vertices = 12 # Amount of vertices (only valid if generating random graph)
 n_ts = 3 # Amount of travelling salesmen
-n_iters = int(1e5) # Amount of iterations for algorithm
-algorithm = 'local' # Choose algorithm from {local, evo, meme}
+n_iters = int(1e4) # Amount of iterations (generations) for algorithm
+algorithm = 'evo' # Choose algorithm from {local, evo, meme}
 vertex_xy_range = [0,1000] # Range of coordinates that vertices can have
 depot_xy_range = [400,600] # Range of coordinates that depot can have
 n_random_perms = n_Vertices*5 # Amount of random permutations
@@ -17,9 +15,11 @@ fitness_scaling_constant = 1e6 # Scale the fitness for visual convenience
 path_distance_delta_penalty = 5 # Constant which penalizes the difference
 # between max and min tours
 
-class Solver:
-    def __init__(self):
-        pass
+# Evo algorithm parameters
+n_generations = int(1e4) # Amount of times that the algorithm will be run
+pop_size = 100 # Size of the population
+pop_selection_size = 20 # Amount of parent individuals selected from population
+
 
 def main():
     """
@@ -46,6 +46,7 @@ def main():
         print 'Error, algorithm not found, exiting simulation. '
         exit()
 
+    plt.pause(5)
 
 def plot_graph(G, boundaries, depot):
 
@@ -105,7 +106,7 @@ def local_search(G_in):
     for i in xrange(n_iters):
 
         # Perform an evaluation of current solution on graph G
-        solution_info = solution_fitness(solution, depot)
+        solution_info = evaluate_fitness(solution, depot)
 
         # Print information
         if i % (n_iters / 100) == 0:
@@ -162,7 +163,7 @@ def local_search(G_in):
             # EVALUATE AND UPDATE ====================
 
             # Evaluate new solution
-            fitness = solution_fitness(solution, depot)
+            fitness = evaluate_fitness(solution, depot)
 
 
             if fitness > best_iteration_fitness:
@@ -189,7 +190,103 @@ def local_search(G_in):
     plt.pause(5)
 
 
-def evo_search(G):
+def evo_search(G_in):
+    # Deep copy the graph
+    G = G_in[:]
+
+    # First vertex is the depot
+    depot = G[0]
+    del G[0]
+
+    # Length of sequence
+    seq_length = len(G)
+
+    # Shuffle graph
+    random.shuffle(G)
+
+    # Initial boundaries that separate individual agent sequences
+    boundaries = [(seq_length / n_ts) * i for i in xrange(1, n_ts)]
+
+    # Define solution: [sequence, boundaries]
+    solution = [G, boundaries]
+
+    # Best fitness so far
+    best_fitness = 0
+
+    # Generate population
+    population = []
+    for i in range(pop_size):
+
+        # Generate random solution
+        random.shuffle(G)
+
+        # Add solution to population
+        population.append([G[:], boundaries])
+
+    # Run evolutionary update for n_iters generations
+    for i in xrange(n_iters):
+
+        # Evaluate fitness for each individual in population
+        fitnesses = [evaluate_fitness(p, depot) for p in population]
+
+        # Print fitness of best individual
+        if i % (n_iters / 100) == 0:
+            print "Iter: {}/{}: Fitness: {}".format(i, n_iters,
+                                                    fitnesses[0])
+
+        if i % (n_iters / 100) == 0:
+            plot_graph(G, boundaries, depot)
+            plt.pause(0.1)
+
+        # Sort population in descending fitness
+        sorted_pop = [P for (F, P) in sorted(zip(fitnesses, population),
+                                             reverse=True)]
+
+        # Select N from population
+        selected_pop = sorted_pop[:pop_selection_size]
+
+        # New population
+        new_population = []
+
+        # Make 100 new individuals from selected units
+        for i in range(pop_size):
+
+            # Selelct 2 random parents
+            r_nums = generate_two_unique_random_numbers(0,pop_selection_size-1)
+            p1 = selected_pop[r_nums[0]]
+            p2 = selected_pop[r_nums[1]]
+
+            # Make new individual
+            offspring = make_new_individual(p1,p2)
+
+            # Add individual to new population
+            new_population.append(offspring)
+
+        # Make current population new
+        population = new_population[:]
+
+
+
+
+def make_new_individual(p1,p2):
+
+    # Take genotype out of individuals
+    gen_1 = p1[0]
+    gen_2 = p2[0]
+
+    # Generate crossoverpoints
+    random_cutpoints = generate_two_unique_random_numbers(0,len(gen_1)-1)
+
+    # Copy parent to offspring
+    offspring = gen_1[:]
+
+    # Copy all values outside the cutpoints from parent 2 to the offspring
+    # in an orderly fashion (to maintain validity of solution)
+
+
+
+
+def select_best_N(population, N):
     pass
 
 
@@ -197,7 +294,7 @@ def meme_search(G):
     pass
 
 
-def solution_fitness(solution, depot):
+def evaluate_fitness(solution, depot):
     """
     Compute the fitness to solution
 
@@ -252,21 +349,6 @@ def solution_fitness(solution, depot):
     return fitness
 
 
-def distance(v1, v2):
-    """
-
-    Parameters  Vertices v1, v2
-    ----------
-    v1 list, (x,y) coordinates
-    v2 list, (x,y) coordinates
-
-    Returns euclidean distance between the two verteces
-    -------
-
-    """
-    return math.sqrt((v1[0] - v2[0])**2 + (v1[1] - v2[1])**2)
-
-
 def generate_random_tsp_vertices(m):
 
     G = []
@@ -294,6 +376,22 @@ def generate_two_unique_random_numbers(low, high):
             break
 
     return rand_1, rand_2
+
+
+def distance(v1, v2):
+    """
+
+    Parameters  Vertices v1, v2
+    ----------
+    v1 list, (x,y) coordinates
+    v2 list, (x,y) coordinates
+
+    Returns euclidean distance between the two verteces
+    -------
+
+    """
+    return math.sqrt((v1[0] - v2[0])**2 + (v1[1] - v2[1])**2)
+
 
 if __name__ == "__main__":
     main()
