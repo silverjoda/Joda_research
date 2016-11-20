@@ -207,14 +207,12 @@ def evo_search(G_in):
     # Initial boundaries that separate individual agent sequences
     boundaries = [(seq_length / n_ts) * i for i in xrange(1, n_ts)]
 
-    # Define solution: [sequence, boundaries]
-    solution = [G, boundaries]
-
     # Best fitness so far
     best_fitness = 0
 
     # Generate population
     population = []
+
     for i in range(pop_size):
 
         # Generate random solution
@@ -224,34 +222,22 @@ def evo_search(G_in):
         population.append([G[:], boundaries])
 
     # Run evolutionary update for n_iters generations
-    for i in xrange(n_iters):
+    for i in xrange(n_generations):
 
         # Evaluate fitness for each individual in population
         fitnesses = [evaluate_fitness(p, depot) for p in population]
 
-        # Print fitness of best individual
-        if i % (n_iters / 100) == 0:
-            print "Iter: {}/{}: Fitness: {}".format(i, n_iters,
-                                                    fitnesses[0])
-
-        if i % (n_iters / 100) == 0:
-            plot_graph(G, boundaries, depot)
-            plt.pause(0.1)
-
         # Sort population in descending fitness
-        sorted_pop = [P for (F, P) in sorted(zip(fitnesses, population),
+        population = [P for (F, P) in sorted(zip(fitnesses, population),
                                              reverse=True)]
 
         # Select N from population
-        selected_pop = sorted_pop[:pop_selection_size]
-
-        # New population
-        new_population = []
+        selected_pop = population[:pop_selection_size]
 
         # Make 100 new individuals from selected units
-        for i in range(pop_size):
+        for p in range(pop_size):
 
-            # Selelct 2 random parents
+            # Select 2 random parents
             r_nums = generate_two_unique_random_numbers(0,pop_selection_size-1)
             p1 = selected_pop[r_nums[0]]
             p2 = selected_pop[r_nums[1]]
@@ -259,12 +245,18 @@ def evo_search(G_in):
             # Make new individual
             offspring = make_new_individual(p1,p2)
 
-            # Add individual to new population
-            new_population.append(offspring)
+            # Add replace worst individuals in population with new ones
+            population[-p] = offspring[:]
 
-        # Make current population new
-        population = new_population[:]
-
+        # Print fitness of best individual
+        if i % (n_iters / 100) == 0:
+            print "Generation: {}/{}: Fitness of best: {}".format(i,
+                                                                  n_iters,
+                                                                  fitnesses[
+                                                                      0])
+        if i % (n_iters / 100) == 0:
+            plot_graph(population[0][0], boundaries, depot)
+            plt.pause(0.1)
 
 
 
@@ -274,16 +266,46 @@ def make_new_individual(p1,p2):
     gen_1 = p1[0]
     gen_2 = p2[0]
 
+    gene_length = len(gen_1)
+
     # Generate crossoverpoints
-    random_cutpoints = generate_two_unique_random_numbers(0,len(gen_1)-1)
+    r_vec = generate_two_unique_random_numbers(0, gene_length-1)
+
+    if r_vec[0] < r_vec[1]:
+        r1 = r_vec[0]
+        r2 = r_vec[1]
+    else:
+        r2 = r_vec[0]
+        r1 = r_vec[1]
+
 
     # Copy parent to offspring
     offspring = gen_1[:]
 
+    # TODO:  FIX: NOT CORRECT ORDER FILTERING
+    # Filter remaining material from gen_2
+    remainder = [g for g in gen_2 if g not in offspring[r1:r2]]
+
     # Copy all values outside the cutpoints from parent 2 to the offspring
     # in an orderly fashion (to maintain validity of solution)
+    idx = 0
+    for i in range(0, r1):
+        offspring[idx] = remainder[idx]
+        idx += 1
+
+    for i in range(r2, gene_length):
+        offspring[idx + r2 - r1] = remainder[idx]
+        idx += 1
 
 
+    # print 'Xoverpoints: {},{}'.format(r1,r2)
+    # print gen_1
+    # print gen_2
+    # print offspring
+    # exit()
+
+    # Return new individual
+    return [offspring, p1[1]]
 
 
 def select_best_N(population, N):
