@@ -2,10 +2,12 @@ import matplotlib.pyplot as plt
 import random
 import math
 import numpy as np
+from copy import copy
+from copy import deepcopy
 
 # ======== Define simulation parameters
-n_Vertices = 6 # Amount of vertices (only valid if generating random graph)
-n_ts = 2 # Amount of travelling salesmen
+n_Vertices = 16 # Amount of vertices (only valid if generating random graph)
+n_ts = 3 # Amount of travelling salesmen
 n_iters = int(1e4) # Amount of iterations (generations) for algorithm
 algorithm = 'evo' # Choose algorithm from {local, evo, meme}
 vertex_xy_range = [0,1000] # Range of coordinates that vertices can have
@@ -193,7 +195,7 @@ def local_search(G_in):
 
 def evo_search(G_in):
     # Deep copy the graph
-    G = G_in[:]
+    G = deepcopy(G_in)
 
     # First vertex is the depot
     depot = G[0]
@@ -220,7 +222,8 @@ def evo_search(G_in):
         random.shuffle(G)
 
         # Add solution to population
-        population.append([G[:], boundaries[:]])
+        population.append([deepcopy(G), deepcopy(boundaries)])
+
 
     # Run evolutionary update for n_iters generations
     for i in xrange(n_generations):
@@ -228,12 +231,13 @@ def evo_search(G_in):
         # Evaluate fitness for each individual in population
         fitnesses = [evaluate_fitness(p, depot) for p in population]
 
-        # Sort population in descending fitness
+        # Sort population in descending fitness ***
         population = [P for (F, P) in sorted(zip(fitnesses, population),
-                                             reverse=True)]
+                                             reverse=True,
+                                             key=lambda pair: pair[0])]
 
         if i % (n_iters / 100) == 0:
-            plot_graph(population[0][0], boundaries, depot)
+            plot_graph(population[0][0], population[0][1], depot)
             plt.pause(0.1)
 
         # Print fitness of best individual
@@ -257,15 +261,14 @@ def evo_search(G_in):
             offspring = make_new_individual(p1,p2)
 
             # Add replace worst individuals in population with new ones
-            population[-j] = offspring
-
+            population[-j - 1] = offspring
 
 
 def make_new_individual(p1,p2):
 
     # Take genotype out of individuals
-    gen_1 = p1[0]
-    gen_2 = p2[0]
+    gen_1 = deepcopy(p1[0])
+    gen_2 = deepcopy(p2[0])
 
     gene_length = len(gen_1)
 
@@ -279,29 +282,31 @@ def make_new_individual(p1,p2):
         r2 = r_vec[0]
         r1 = r_vec[1]
 
-
     # Copy parent to offspring
-    offspring = gen_1[:]
+    offspring = deepcopy(gen_1)
 
     # TODO:  FIX: NOT CORRECT ORDER FILTERING
     # Filter remaining material from gen_2
-    remainder = [g for g in gen_2 if g not in offspring[r1:r2]]
+    remainder = deepcopy([g for g in gen_2 if g not in offspring[r1:r2]])
 
     # Copy all values outside the cutpoints from parent 2 to the offspring
     # in an orderly fashion (to maintain validity of solution)
     idx = 0
     for i in range(0, r1):
-        offspring[idx] = remainder[idx]
+        offspring[idx] = deepcopy(remainder[idx])
         idx += 1
 
     for i in range(r2, gene_length):
-        offspring[idx + r2 - r1] = remainder[idx]
+        offspring[idx + r2 - r1] = deepcopy(remainder[idx])
         idx += 1
+
 
     # # Random swap
     # if random.random() < mutation_alpha:
     #     r_vec = generate_two_unique_random_numbers(0, gene_length - 1)
-    #     offspring[r_vec[0]] = offspring[r_vec[1]]
+    #     tmp = offspring[r_vec[0]]
+    #     offspring[r_vec[0]] = deepcopy(offspring[r_vec[1]])
+    #     offspring[r_vec[1]] = tmp
 
 
     # print 'Xoverpoints: {},{}'.format(r1,r2)
@@ -310,24 +315,25 @@ def make_new_individual(p1,p2):
     # print offspring
     # exit()
 
+    boundaries = deepcopy(p1[1])
+    #
     # # Make mutation
-    # for i in range(len(p1)):
+    # for i in range(len(boundaries)):
     #     # Chance
     #     if random.random() < (mutation_alpha/n_ts):
     #         # Shift to right or left
     #         randshift = random.randint(0,1)*2-1
     #
     #         if randshift == -1:
-    #             if (i == 0 and p1[i] > 1) or (i > 0 and p1[i] > p1[i-1] + 1):
-    #                 p1[i] -= 1
+    #             if (i == 0 and boundaries[i] > 1) or (i > 0 and boundaries[i] > boundaries[i-1] + 1):
+    #                 boundaries[i] -= 1
     #         else:
-    #             if (i == (len(p1) - 1) and p1[i] < gene_length - 2) \
-    #                     or (i < (len(p1) - 1) and p1[i] < p1[i+1] - 1):
-    #                 p1[i] -= 1
-
+    #             if (i == (len(boundaries) - 1) and boundaries[i] < gene_length - 2) \
+    #                     or (i < (len(boundaries) - 1) and boundaries[i] < boundaries[i+1] - 1):
+    #                 boundaries[i] -= 1
 
     # Return new individual
-    return [offspring, p1[1]]
+    return [offspring, boundaries]
 
 
 def meme_search(G):
