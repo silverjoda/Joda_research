@@ -4,8 +4,8 @@ import math
 import numpy as np
 
 # ======== Define simulation parameters
-n_Vertices = 12 # Amount of vertices (only valid if generating random graph)
-n_ts = 3 # Amount of travelling salesmen
+n_Vertices = 6 # Amount of vertices (only valid if generating random graph)
+n_ts = 2 # Amount of travelling salesmen
 n_iters = int(1e4) # Amount of iterations (generations) for algorithm
 algorithm = 'evo' # Choose algorithm from {local, evo, meme}
 vertex_xy_range = [0,1000] # Range of coordinates that vertices can have
@@ -18,8 +18,9 @@ path_distance_delta_penalty = 5 # Constant which penalizes the difference
 # Evo algorithm parameters
 n_generations = int(1e4) # Amount of times that the algorithm will be run
 pop_size = 100 # Size of the population
-pop_selection_size = 20 # Amount of parent individuals selected from population
-
+pop_selection_size = pop_size/5 # Amount of parent individuals selected from
+# population
+mutation_alpha = 0.01 # Chance to mutate
 
 def main():
     """
@@ -219,7 +220,7 @@ def evo_search(G_in):
         random.shuffle(G)
 
         # Add solution to population
-        population.append([G[:], boundaries])
+        population.append([G[:], boundaries[:]])
 
     # Run evolutionary update for n_iters generations
     for i in xrange(n_generations):
@@ -231,32 +232,32 @@ def evo_search(G_in):
         population = [P for (F, P) in sorted(zip(fitnesses, population),
                                              reverse=True)]
 
-        # Select N from population
-        selected_pop = population[:pop_selection_size]
+        if i % (n_iters / 100) == 0:
+            plot_graph(population[0][0], boundaries, depot)
+            plt.pause(0.1)
+
+        # Print fitness of best individual
+        if i % (n_iters / 100) == 0:
+            print "Generation: {}/{}: Fitness of best: {}, mean: {}, " \
+                  "median: {}".format(i,
+                                      n_iters,
+                                      evaluate_fitness(population[0], depot),
+                                      np.mean(fitnesses),
+                                      np.median(fitnesses))
 
         # Make 100 new individuals from selected units
-        for p in range(pop_size):
+        for j in range(pop_selection_size):
 
             # Select 2 random parents
             r_nums = generate_two_unique_random_numbers(0,pop_selection_size-1)
-            p1 = selected_pop[r_nums[0]]
-            p2 = selected_pop[r_nums[1]]
+            p1 = population[r_nums[0]]
+            p2 = population[r_nums[1]]
 
             # Make new individual
             offspring = make_new_individual(p1,p2)
 
             # Add replace worst individuals in population with new ones
-            population[-p] = offspring[:]
-
-        # Print fitness of best individual
-        if i % (n_iters / 100) == 0:
-            print "Generation: {}/{}: Fitness of best: {}".format(i,
-                                                                  n_iters,
-                                                                  fitnesses[
-                                                                      0])
-        if i % (n_iters / 100) == 0:
-            plot_graph(population[0][0], boundaries, depot)
-            plt.pause(0.1)
+            population[-j] = offspring
 
 
 
@@ -297,6 +298,11 @@ def make_new_individual(p1,p2):
         offspring[idx + r2 - r1] = remainder[idx]
         idx += 1
 
+    # # Random swap
+    # if random.random() < mutation_alpha:
+    #     r_vec = generate_two_unique_random_numbers(0, gene_length - 1)
+    #     offspring[r_vec[0]] = offspring[r_vec[1]]
+
 
     # print 'Xoverpoints: {},{}'.format(r1,r2)
     # print gen_1
@@ -304,12 +310,24 @@ def make_new_individual(p1,p2):
     # print offspring
     # exit()
 
+    # # Make mutation
+    # for i in range(len(p1)):
+    #     # Chance
+    #     if random.random() < (mutation_alpha/n_ts):
+    #         # Shift to right or left
+    #         randshift = random.randint(0,1)*2-1
+    #
+    #         if randshift == -1:
+    #             if (i == 0 and p1[i] > 1) or (i > 0 and p1[i] > p1[i-1] + 1):
+    #                 p1[i] -= 1
+    #         else:
+    #             if (i == (len(p1) - 1) and p1[i] < gene_length - 2) \
+    #                     or (i < (len(p1) - 1) and p1[i] < p1[i+1] - 1):
+    #                 p1[i] -= 1
+
+
     # Return new individual
     return [offspring, p1[1]]
-
-
-def select_best_N(population, N):
-    pass
 
 
 def meme_search(G):
@@ -368,7 +386,7 @@ def evaluate_fitness(solution, depot):
     # We want fitness to be lower with higher penalty
     fitness = fitness_scaling_constant*(1/total_penalty)
 
-    return fitness
+    return total_tour_length
 
 
 def generate_random_tsp_vertices(m):
