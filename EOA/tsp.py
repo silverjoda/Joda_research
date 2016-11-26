@@ -6,8 +6,8 @@ from copy import copy
 from copy import deepcopy
 
 # ======== Define simulation parameters
-n_Vertices = 16 # Amount of vertices (only valid if generating random graph)
-n_ts = 3 # Amount of travelling salesmen
+n_Vertices = 32 # Amount of vertices (only valid if generating random graph)
+n_ts = 6 # Amount of travelling salesmen
 n_iters = int(1e4) # Amount of iterations (generations) for algorithm
 algorithm = 'evo' # Choose algorithm from {local, evo, meme}
 vertex_xy_range = [0,1000] # Range of coordinates that vertices can have
@@ -19,10 +19,10 @@ path_distance_delta_penalty = 5 # Constant which penalizes the difference
 
 # Evo algorithm parameters
 n_generations = int(1e4) # Amount of times that the algorithm will be run
-pop_size = 100 # Size of the population
-pop_selection_size = pop_size/5 # Amount of parent individuals selected from
+pop_size = 300 # Size of the population
+pop_selection_size = pop_size/7 # Amount of parent individuals selected from
 # population
-mutation_alpha = 0.01 # Chance to mutate
+mutation_alpha = 0.03  # Chance to mutate
 
 def main():
     """
@@ -90,7 +90,6 @@ def local_search(G_in):
 
     # Length of sequence
     seq_length = len(G)
-
 
     # Shuffle graph
     random.shuffle(G)
@@ -231,10 +230,13 @@ def evo_search(G_in):
         # Evaluate fitness for each individual in population
         fitnesses = [evaluate_fitness(p, depot) for p in population]
 
+
         # Sort population in descending fitness ***
         population = [P for (F, P) in sorted(zip(fitnesses, population),
-                                             reverse=True,
+                                             reverse=False,
                                              key=lambda pair: pair[0])]
+        # Sort fitnesses
+        fitnesses.sort(reverse=False)
 
         if i % (n_iters / 100) == 0:
             plot_graph(population[0][0], population[0][1], depot)
@@ -249,19 +251,35 @@ def evo_search(G_in):
                                       np.mean(fitnesses),
                                       np.median(fitnesses))
 
+        # Calculate total fitness
+        total_fitness = sum(fitnesses)
+
+        fit_scaled = np.array(fitnesses)/total_fitness
+
         # Make 100 new individuals from selected units
         for j in range(pop_selection_size):
 
-            # Select 2 random parents
-            r_nums = generate_two_unique_random_numbers(0,pop_selection_size-1)
-            p1 = population[r_nums[0]]
-            p2 = population[r_nums[1]]
 
-            # Make new individual
-            offspring = make_new_individual(p1,p2)
+            idx1 = np.random.choice(len(fitnesses), p=fit_scaled)
+            idx2 = np.random.choice(len(fitnesses), p=fit_scaled)
 
-            # Add replace worst individuals in population with new ones
-            population[-j - 1] = offspring
+            p1 = population[idx1]
+            p2 = population[idx2]
+
+            # Make new individuals
+            offspring1 = make_new_individual(p1,p2)
+            offspring2 = make_new_individual(p2,p2)
+
+            if evaluate_fitness(offspring1, depot) < evaluate_fitness(p1,depot):
+                population[idx1] = deepcopy(offspring1)
+            elif random.random() < mutation_alpha:
+                population[idx1] = deepcopy(offspring1)
+
+            if evaluate_fitness(offspring2, depot) < evaluate_fitness(p2,depot):
+                population[idx2]= deepcopy(offspring2)
+            elif random.random() < mutation_alpha:
+                population[idx2] = deepcopy(offspring2)
+
 
 
 def make_new_individual(p1,p2):
@@ -301,12 +319,12 @@ def make_new_individual(p1,p2):
         idx += 1
 
 
-    # # Random swap
-    # if random.random() < mutation_alpha:
-    #     r_vec = generate_two_unique_random_numbers(0, gene_length - 1)
-    #     tmp = offspring[r_vec[0]]
-    #     offspring[r_vec[0]] = deepcopy(offspring[r_vec[1]])
-    #     offspring[r_vec[1]] = tmp
+    # Random swap
+    if random.random() < mutation_alpha:
+        r_vec = generate_two_unique_random_numbers(0, gene_length - 1)
+        tmp = offspring[r_vec[0]]
+        offspring[r_vec[0]] = deepcopy(offspring[r_vec[1]])
+        offspring[r_vec[1]] = tmp
 
 
     # print 'Xoverpoints: {},{}'.format(r1,r2)
@@ -317,20 +335,20 @@ def make_new_individual(p1,p2):
 
     boundaries = deepcopy(p1[1])
     #
-    # # Make mutation
-    # for i in range(len(boundaries)):
-    #     # Chance
-    #     if random.random() < (mutation_alpha/n_ts):
-    #         # Shift to right or left
-    #         randshift = random.randint(0,1)*2-1
-    #
-    #         if randshift == -1:
-    #             if (i == 0 and boundaries[i] > 1) or (i > 0 and boundaries[i] > boundaries[i-1] + 1):
-    #                 boundaries[i] -= 1
-    #         else:
-    #             if (i == (len(boundaries) - 1) and boundaries[i] < gene_length - 2) \
-    #                     or (i < (len(boundaries) - 1) and boundaries[i] < boundaries[i+1] - 1):
-    #                 boundaries[i] -= 1
+    # Make mutation
+    for i in range(len(boundaries)):
+        # Chance
+        if random.random() < (mutation_alpha/n_ts):
+            # Shift to right or left
+            randshift = random.randint(0,1)*2-1
+
+            if randshift == -1:
+                if (i == 0 and boundaries[i] > 1) or (i > 0 and boundaries[i] > boundaries[i-1] + 1):
+                    boundaries[i] -= 1
+            else:
+                if (i == (len(boundaries) - 1) and boundaries[i] < gene_length - 2) \
+                        or (i < (len(boundaries) - 1) and boundaries[i] < boundaries[i+1] - 1):
+                    boundaries[i] -= 1
 
     # Return new individual
     return [offspring, boundaries]

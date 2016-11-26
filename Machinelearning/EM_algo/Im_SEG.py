@@ -3,100 +3,105 @@ from PIL import Image
 from sklearn.cluster import KMeans
 from sklearn import mixture
 
-# Image housekeeping #################################################
-
-img_path = 'data/'
-
-# Amount of images in the dataset
-n_images = 50
-
-# List which holds the read images in raw form
-images = []  # [n_images, 3, m, n]
-images_seg = []
 
 
-# Read all images --
-for i in range(n_images):
-    # Create image file name
-    img_idx = str(i).zfill(2)
-    img_name = "{}hand_{}.png".format(img_path, img_idx)
-    img_seg_name = "{}hand_{}_seg.png".format(img_path, img_idx)
-
-    # Open image -------------
-    img = Image.open(img_name).convert("RGB")
-    img_arr = np.array(img, dtype=np.float32) / 255.0
-    images.append(img_arr)
-
-    # Open segmentation ------
-    img_seg = Image.open(img_seg_name).convert("RGB")
-    img_seg_arr = np.array(img_seg, dtype=np.float32) / 255.0
-    images_seg.append(img_arr)
-
-# Image matrix of shape (n_images, m, n, 3)
-images_mat = np.array(images, dtype=np.float32)
-images_seg_mat = np.array(images_seg, dtype=np.float32)
-
-# Read the model initialization image
-model_init_img = Image.open("{}model_init.png".format(img_path)).convert('L')
-model_init_img_mat = np.array(model_init_img, dtype=np.float32) / 255.0
-
-# Find image shapes
-img_shape = [images_mat.shape[1],images_mat.shape[2]]
-model_pic_shape = [model_init_img_mat.shape[0],model_init_img_mat.shape[1]]
-
-assert img_shape == model_pic_shape
-
-# Find indeces where image is foreground and background
-foregnd_idxs = np.reshape(model_init_img_mat, np.prod(img_shape)) > 0.7
-backgnd_idxs = np.reshape(model_init_img_mat, np.prod(img_shape)) < 0.2
-
-# Find mean RGB pixel vectors for background and foreground
-flattened_images = np.reshape(np.transpose(images_mat,(1,2,0,3)),(np.prod(images_mat.shape[0:2]),images_mat.shape[2],images_mat.shape[3]))
-
-mean_foregnd_vec = np.mean(flattened_images[:,foregnd_idxs], keepdims=2)
-mean_backgnd_vec = np.mean(flattened_images[:,backgnd_idxs], keepdims=2)
 
 
-print mean_foregnd_vec
-print mean_backgnd_vec
 
-exit()
+def load_images(path, n):
+    # List which holds the read images in raw form
+    images = []  # [n_images, 3, m, n]
+    images_seg = []
 
-# Segment the image using K-means (2 clusters). ########################
+    #  =========== Read all images ==============
 
-# Reshape images into 2 dimensional vector with shape (n_images*m*n, 3)
-images_trsp = np.transpose(images_mat, (3, 1, 2, 0))
-images_arr = np.reshape(images_trsp,
-                        (images_trsp.shape[0], np.prod(images_trsp.shape[1:])))
+    for i in range(n):
+        # Create image file name
+        img_idx = str(i).zfill(2)
+        img_name = "{}hand_{}.png".format(path, img_idx)
+        img_seg_name = "{}hand_{}_seg.png".format(path, img_idx)
 
-# Vector with shape (n_images*m*n, 3)
-images_arr = np.transpose(images_arr)
+        # Open image -------------
+        img = Image.open(img_name).convert("RGB")
+        img_arr = np.array(img, dtype=np.float32) / 255.0
+        images.append(img_arr)
 
-# Amount of clusters
-n_clusters = 2
+        # Open segmentation ------
+        img_seg = Image.open(img_seg_name).convert("RGB")
+        img_seg_arr = np.array(img_seg, dtype=np.float32) / 255.0
+        images_seg.append(img_seg_arr)
 
-# Make classifier
-KMeans_cl = KMeans(n_clusters=2, n_init=1, n_jobs=-1)
+    # Read the model initialization image
+    model_init_img = Image.open("{}model_init.png".format(path)).convert(
+        'L')
+    model_init_img_mat = np.array(model_init_img, dtype=np.float32) / 255.0
 
-# Fit the data
-KMeans_cl.fit(images_arr)
+    # Image matrix of shape (n_images, m, n, c)
+    images_mat = np.array(images, dtype=np.float32)
+    images_seg_mat = np.array(images_seg, dtype=np.float32)
+
+    #  ==========================================
+
+    return [images_mat, images_seg_mat, model_init_img_mat]
+
+def get_FG_BG_RGB_means(image):
+
+    assert len(image.shape) == 3, "Image must be RGB"
+    m,n,c = image.shape
+
+    # Compute mean along the first row of the image
+    fg_mean = np.mean(image[:m,0,:], axis=(0,1))
+
+    # compute mean in a small middle square of the image
+    bg_mean = np.mean(image[2*m/5:3*m/5, 2*n/5:3*n/5, :], axis=(0, 1))
+
+    assert len(fg_mean) == 3, "Mean error! Len is not 3"
+    assert len(bg_mean) == 3, "Mean error! Len is not 3"
+
+    return fg_mean, bg_mean
+
+def segment_by_k_means(image):
+
+    # Make classifier
+    KMeans_cl = KMeans(n_clusters=2, n_init=1, n_jobs=-1)
+
+    # Fit the data
+    KMeans_cl.fit(image)
+
+    # Make the segmentation on the image and return it
+    return KMeans_cl.predict(image)
+
+def segment_by_GMM(image):
+
+    # Make classifier
+    gmm = mixture.GMM(n_components=2)
+
+    # Fit the data
+    gmm.fit(image)
+
+    # Make the segmentation on the image and return it
+    gmm.predict(image)
+
+def plot_img_and_seg(image, seg, gt):
+    assert len(image.shape) == 3, "Failed to plot, image is not RGB!"
+    assert len(seg.shape) == len(gt.shape) == 2 , "Failed to plot, " \
+                                                  "Segmentation is not B/W!"
 
 
-# Segment the image using Gaussian mixture (2 components) ####################
 
-# Reshape images into 2 dimensional vector with shape (n_images*m*n, 3)
-images_trsp = np.transpose(images_mat, (3, 1, 2, 0))
-images_arr = np.reshape(images_trsp,
-                        (images_trsp.shape[0], np.prod(images_trsp.shape[1:])))
+def main():
 
-# Vector with shape (n_images*m*n, 3)
-images_arr = np.transpose(images_arr)
+    # Path to images
+    img_path = 'data/'
 
-# Amount of components
-n_components = 2
+    # Amount of images in the dataset
+    n_images = 50
 
-# Make classifier
-gmm = mixture.GMM(n_components=2)
+    # Load images
+    images_mat, images_seg_mat, model_init_img = load_images(img_path, n_images)
 
-# Fit the data
-gmm.fit(images_arr)
+
+
+
+if __name__ == "__main__":
+    main()
