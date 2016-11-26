@@ -2,10 +2,21 @@ import numpy as np
 from PIL import Image
 from sklearn.cluster import KMeans
 from sklearn import mixture
+import matplotlib.pyplot as plt
 
 
+class EM_classif:
+    def __init__(self):
+        pass
 
+    def fit(self, images, shape_model):
+        pass
 
+    def evaluate(self, images, gt):
+        pass
+
+    def predict(self):
+        pass
 
 
 def load_images(path, n):
@@ -27,7 +38,7 @@ def load_images(path, n):
         images.append(img_arr)
 
         # Open segmentation ------
-        img_seg = Image.open(img_seg_name).convert("RGB")
+        img_seg = Image.open(img_seg_name).convert('L')
         img_seg_arr = np.array(img_seg, dtype=np.float32) / 255.0
         images_seg.append(img_seg_arr)
 
@@ -50,7 +61,7 @@ def get_FG_BG_RGB_means(image):
     m,n,c = image.shape
 
     # Compute mean along the first row of the image
-    fg_mean = np.mean(image[:m,0,:], axis=(0,1))
+    fg_mean = np.mean(image[:m,0:1,:], axis=(0,1))
 
     # compute mean in a small middle square of the image
     bg_mean = np.mean(image[2*m/5:3*m/5, 2*n/5:3*n/5, :], axis=(0, 1))
@@ -62,32 +73,65 @@ def get_FG_BG_RGB_means(image):
 
 def segment_by_k_means(image):
 
+    assert len(image.shape) == 3, "Image must be RGB"
+    m, n, c = image.shape
+
+    # Get means
+    init_mean = get_FG_BG_RGB_means(image)
+
+    pixels_arr = np.reshape(image, (m*n, c))
+
     # Make classifier
-    KMeans_cl = KMeans(n_clusters=2, n_init=1, n_jobs=-1)
+    KMeans_cl = KMeans(n_clusters=2, n_init=3, init=np.array(init_mean))
 
     # Fit the data
-    KMeans_cl.fit(image)
+    KMeans_cl.fit(pixels_arr)
 
     # Make the segmentation on the image and return it
-    return KMeans_cl.predict(image)
+    prediction = KMeans_cl.predict(pixels_arr)
+
+    # Reshape pixels back into image
+    pred_img = np.reshape(prediction, (m ,n))
+
+    return pred_img
 
 def segment_by_GMM(image):
+    assert len(image.shape) == 3, "Image must be RGB"
+    m, n, c = image.shape
+
+    # Get means
+    init_mean = get_FG_BG_RGB_means(image)
+
+    pixels_arr = np.reshape(image, (m * n, c))
 
     # Make classifier
-    gmm = mixture.GMM(n_components=2)
+    gmm = mixture.GMM(n_components=2, n_init=1)
 
     # Fit the data
-    gmm.fit(image)
+    gmm.fit(pixels_arr)
 
     # Make the segmentation on the image and return it
-    gmm.predict(image)
+    prediction = gmm.predict(pixels_arr)
+
+    # Reshape pixels back into image
+    pred_img = np.reshape(prediction, (m, n))
+
+    return pred_img
 
 def plot_img_and_seg(image, seg, gt):
     assert len(image.shape) == 3, "Failed to plot, image is not RGB!"
     assert len(seg.shape) == len(gt.shape) == 2 , "Failed to plot, " \
                                                   "Segmentation is not B/W!"
 
+    f = plt.figure()
+    f.add_subplot(1, 3, 1)
+    plt.imshow(image)
+    f.add_subplot(1, 3, 2)
+    plt.imshow(seg, cmap='gray')
+    f.add_subplot(1, 3, 3)
+    plt.imshow(gt, cmap='gray')
 
+    plt.show()
 
 def main():
 
@@ -99,6 +143,22 @@ def main():
 
     # Load images
     images_mat, images_seg_mat, model_init_img = load_images(img_path, n_images)
+
+    # Random image index
+    rnd_idx = np.random.randint(0,49)
+
+    # Make custom EM classifier
+    em_cl = EM_classif()
+
+    # Train the classifier
+    em_cl.fit(images_mat, model_init_img)
+
+    # Predict single image
+    em_seg = em_cl.predict(images_mat[rnd_idx])
+
+    # Plot image
+    plot_img_and_seg(images_mat[rnd_idx], em_seg, images_seg_mat[rnd_idx])
+
 
 
 
