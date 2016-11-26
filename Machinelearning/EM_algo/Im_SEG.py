@@ -4,19 +4,79 @@ from sklearn.cluster import KMeans
 from sklearn import mixture
 import matplotlib.pyplot as plt
 
+# TODO: Fix GMM baseline means initialization
+# TODO: Add segmentation evaluation
 
 class EM_classif:
-    def __init__(self):
-        pass
+    def __init__(self, images, gt, shape_model):
 
-    def fit(self, images, shape_model):
-        pass
+        self.images = images
+        self.gt = gt
+        self.shape_model = shape_model
 
-    def evaluate(self, images, gt):
-        pass
+        # Get complete shape of images
+        self.N, self.m, self.n, self.c = self.images.shape
 
-    def predict(self):
-        pass
+        # Allocate auxilliary variables matrix
+        self.a = np.zeros((self.m, self.n)) # Dim: (m,n)
+
+        # Initialize our u parameters
+        self.u = self._init_u(self.shape_model) # Dim: (m,n)
+
+        # Initialize parameters
+        self.mew_0 = np.zeros((self.N, self.c)) # Dim: (N,3)
+        self.cov0 = np.zeros((self.N, self.c, self.c)) # Dim: (N,3,3)
+        self.mew_1 = np.zeros((self.N, self.c))  # Dim: (N,3)
+        self.cov1 = np.zeros((self.N, self.c, self.c)) # Dim: (N,3,3)
+
+    def fit(self):
+
+        while(True):
+
+            # ==== E-step =====
+            # Assign new a's from posterior of previous iteration
+            a_new = self.u/(1 + self.u)
+
+            # ==== M-step =====
+
+            # Estimate global shape model
+            self.u = np.log(a_new/(1 - a_new))
+
+            # Estimate theta parameters for each image
+            for i in range(self.N):
+                img = self.images[i]
+                pos_img_pixels = img(a_new == 1)
+                neg_img_pixels = img(a_new == 0)
+                self.mew_0[i] = np.mean(pos_img_pixels, axis=(0,1))
+                self.mew_1[i] = np.mean(neg_img_pixels, axis=(0,1))
+                self.cov0[i] = np.mean((neg_img_pixels - self.mew_0[
+                    i])*np.transpose(neg_img_pixels - self.mew_0[i]))
+                self.cov1[i] = np.mean((neg_img_pixels - self.mew_1[
+                    i]) * np.transpose(neg_img_pixels - self.mew_1[i]))
+
+            # Convergence check
+            if np.mean(np.abs(self.a-a_new)) < 0.01:
+                break
+            else:
+                # Assign new a's
+                self.a = a_new
+
+
+    def _init_u(self, shape_model):
+        return np.log(shape_model/(1 - shape_model))
+
+    def shape_mdl(self):
+        return np.array(self.a > 0.5, dtype=np.float32)
+
+    def evaluate(self):
+        total_err = 0
+        for i in range(self.N):
+            pass
+
+
+    def predict(self, idx):
+        assert self.u is not None, "Attempting prediction on untrained model"
+
 
 
 def load_images(path, n):
@@ -105,7 +165,7 @@ def segment_by_GMM(image):
     pixels_arr = np.reshape(image, (m * n, c))
 
     # Make classifier
-    gmm = mixture.GMM(n_components=2, n_init=1)
+    gmm = mixture.GMM(n_components=2, n_init=1, covariance_type='full')
 
     # Fit the data
     gmm.fit(pixels_arr)
@@ -148,13 +208,13 @@ def main():
     rnd_idx = np.random.randint(0,49)
 
     # Make custom EM classifier
-    em_cl = EM_classif()
+    em_cl = EM_classif(images_mat, images_seg_mat, model_init_img)
 
     # Train the classifier
-    em_cl.fit(images_mat, model_init_img)
+    em_cl.fit()
 
     # Predict single image
-    em_seg = em_cl.predict(images_mat[rnd_idx])
+    em_seg = em_cl.predict(rnd_idx)
 
     # Plot image
     plot_img_and_seg(images_mat[rnd_idx], em_seg, images_seg_mat[rnd_idx])
