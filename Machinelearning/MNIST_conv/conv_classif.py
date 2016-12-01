@@ -3,6 +3,8 @@ import numpy as np
 from keras.datasets import mnist
 import tensorflow as tf
 
+# TODO: create batching function
+# TODO: Add tensorflow naming, scope and datalogging ERRRYWHERE!!!!
 
 def onehot(labels):
     labels_arr = np.array(labels)
@@ -83,7 +85,9 @@ b_fc_69 = tf.Variable(tf.constant(0., shape=[1]))
 fc_weights_69_TL = [w_fc_69, b_fc_69]
 
 # ==================== Make network ====================
-X = tf.placeholder(dtype=tf.float32)
+X = tf.placeholder(dtype=tf.float32, shape=[-1,28,28,1])
+Y_05 = tf.placeholder(dtype=tf.float32, shape=[-1,6])
+Y_69 = tf.placeholder(dtype=tf.float32, shape=[-1,4])
 
 # Convolutional layers
 l_conv1 = tf.nn.relu(tf.nn.conv2d(X, w_conv1, [1,1,1,1], 'SAME') + b_conv1)
@@ -97,26 +101,40 @@ fc_reshape = tf.reshape(mp_layer, shape=(-1, 14*14))
 
 # Fully connected layers 05 datasets
 l_fc_05 = tf.nn.relu(tf.matmul(fc_reshape, w_fc_05) + b_fc_05)
-out_05 = tf.nn.softmax(l_fc_05)
+#out_05 = tf.nn.softmax(l_fc_05)
 
 # Fully connected layers 69 datasets
 l_fc_69 = tf.nn.relu(tf.matmul(fc_reshape, w_fc_69) + b_fc_69)
-out_69 = tf.nn.softmax(l_fc_69)
+#out_69 = tf.nn.softmax(l_fc_69)
 
+# Loss functions
+CE_05 = tf.reduce_mean(tf.nn.softmax_cross_entropy_with_logits(l_fc_05, Y_05))
+CE_69 = tf.reduce_mean(tf.nn.softmax_cross_entropy_with_logits(l_fc_69, Y_69))
 
 # Training ===================================================
 
-# Plan:
+# OPTIMIZERS :
+
+
+
+# Plan and the respective optimizers:
 # 1) Train network on 69 dataset n times
+raw_69_optim = tf.train.AdamOptimizer(0.01).minimize(CE_69)
+
 # 2) Train network on 05 dataset n times
+raw_05_optim = tf.train.AdamOptimizer(0.01).minimize(CE_05)
+
 # 3) Train network on 69 with conv layers from the 05 dataset n times
+TL_69_optim_freeze_conv = tf.train.AdamOptimizer(0.01).minimize(CE_69,
+                                                    var_list=fc_weights_69_TL)
+
 # 4) Train network on 69 with conv layers from 05 without freezing n times
+TL_69_optim_finetune = tf.train.AdamOptimizer(0.01).minimize(CE_69)
 
 # Execution
 n_rep = 3
 
 # 1) Train network on 69 dataset n_rep times ===============
-raw_69_optim = tf.train.AdamOptimizer(0.01).minimize()
 
 sess = tf.Session() # Make tensorflow session
 sess.run(tf.initialize_all_variables()) # Initialize all variables

@@ -2,6 +2,7 @@ import numpy as np
 from PIL import Image
 from sklearn.cluster import KMeans
 from sklearn import mixture
+
 import matplotlib.pyplot as plt
 
 # TODO: Fix GMM baseline means initialization
@@ -18,7 +19,7 @@ class EM_classif:
         self.N, self.m, self.n, self.c = self.images.shape
 
         # Allocate auxilliary variables matrix
-        self.a = np.zeros((self.m, self.n)) # Dim: (m,n)
+        self.a = np.zeros((self.N, self.m, self.n)) # Dim: (m,n)
 
         # Initialize our u parameters
         self.u = self._init_u(self.shape_model) # Dim: (m,n)
@@ -35,7 +36,7 @@ class EM_classif:
 
             # ==== E-step =====
             # Assign new a's from posterior of previous iteration
-            a_new = self.u/(1 + self.u)
+            a_new = [] # ....
 
             # ==== M-step =====
 
@@ -55,7 +56,7 @@ class EM_classif:
                     i]) * np.transpose(neg_img_pixels - self.mew_1[i]))
 
             # Convergence check
-            if np.mean(np.abs(self.a-a_new)) < 0.01:
+            if np.mean(np.abs(self.a-a_new)) < 0.05:
                 break
             else:
                 # Assign new a's
@@ -165,7 +166,9 @@ def segment_by_GMM(image):
     pixels_arr = np.reshape(image, (m * n, c))
 
     # Make classifier
-    gmm = mixture.GMM(n_components=2, n_init=1, covariance_type='full')
+    gmm = mixture.GaussianMixture(n_components=2, n_init=1,
+                                  covariance_type='full',
+                                  means_init=np.array(init_mean))
 
     # Fit the data
     gmm.fit(pixels_arr)
@@ -177,6 +180,8 @@ def segment_by_GMM(image):
     pred_img = np.reshape(prediction, (m, n))
 
     return pred_img
+
+
 
 def plot_img_and_seg(image, seg, gt):
     assert len(image.shape) == 3, "Failed to plot, image is not RGB!"
@@ -193,6 +198,71 @@ def plot_img_and_seg(image, seg, gt):
 
     plt.show()
 
+
+def eval_GMM_baseline_classifier(images, gt):
+    assert len(images) == len(gt), "Error, Failed to evaluate classifier."
+
+    l, m, n, c = images.shape
+
+    # Total acumulated error
+    total_err = 0
+
+    for img,seg in zip(images,gt):
+        # Get means
+        init_mean = get_FG_BG_RGB_means(img)
+
+        pixels_arr = np.reshape(img, (m * n, c))
+
+        # Make classifier
+        gmm = mixture.GaussianMixture(n_components=2, n_init=1,
+                                      covariance_type='full',
+                                      means_init=np.array(init_mean))
+
+        # Fit the data
+        gmm.fit(pixels_arr)
+
+        # Make the segmentation on the image and return it
+        prediction = gmm.predict(pixels_arr)
+
+        # Reshape pixels back into image
+        cl_seg = np.reshape(prediction, (m, n))
+
+        # Find error
+        total_err += np.mean(cl_seg != seg)
+
+    return (1 - total_err/len(images))
+
+def eval_KMeans_baseline_classifier(images, gt):
+    assert len(images) == len(gt), "Error, Failed to evaluate classifier."
+
+    l, m, n, c = images.shape
+
+    # Total acumulated error
+    total_err = 0
+
+    for img,seg in zip(images,gt):
+        # Get means
+        init_mean = get_FG_BG_RGB_means(img)
+
+        pixels_arr = np.reshape(img, (m * n, c))
+
+        # Make classifier
+        KMeans_cl = KMeans(n_clusters=2, n_init=3, init=np.array(init_mean))
+
+        # Fit the data
+        KMeans_cl.fit(pixels_arr)
+
+        # Make the segmentation on the image and return it
+        prediction = KMeans_cl.predict(pixels_arr)
+
+        # Reshape pixels back into image
+        cl_seg = np.reshape(prediction, (m, n))
+
+        # Find error
+        total_err += np.mean(cl_seg != seg)
+
+    return (1 - total_err/len(images))
+
 def main():
 
     # Path to images
@@ -204,8 +274,66 @@ def main():
     # Load images
     images_mat, images_seg_mat, model_init_img = load_images(img_path, n_images)
 
-    # Random image index
-    rnd_idx = np.random.randint(0,49)
+    #====== BASELINE APPROACH EVALUATION
+    # Evaluate GMM baseline approach on whole dataset
+    GMM_Baseline_acc = eval_GMM_baseline_classifier(images_mat, images_seg_mat)
+    print "GMM baseline approach accuracy: {}".format(GMM_Baseline_acc)
+
+    # Evaluate k-means baseline approach on whole dataset
+    KMeans_Baseline_acc = eval_KMeans_baseline_classifier(images_mat,
+                                                      images_seg_mat)
+    print "K-means baseline approach accuracy: {}".format(KMeans_Baseline_acc)
+
+
+    # ====== BASELINE APPROACH SEGMENTATION EXAMPLES
+
+    # Amount of images that we will be plotting
+    n_imgs = 3
+
+    # Create random image indeces
+    rnd_idxs = np.arange(49)
+    np.random.shuffle(rnd_idxs)
+    rnd_idxs =  rnd_idxs[:n_imgs]
+
+    # Lists of predicted segmentations for the baseline approaches
+    imgs = []
+    seg_gmm = []
+    seg_kmeans = []
+
+    # Segment image by GMM
+    for rnd_idx in rnd_idxs:
+        # Image
+        img = images_mat[rnd_idx]
+        imgs.append(img)
+        # Make segmentations
+        seg_gmm.append(segment_by_GMM(img))
+        seg_kmeans.append(segment_by_k_means(img))
+
+    # Plot segmentations
+    f = plt.figure()
+    f.suptitle('Segmentations for GMM and Kmeans respectively')
+
+    for i in range(n_imgs):
+        f.add_subplot(n_imgs, 3, i*3 + 1)
+        plt.imshow(imgs[i])
+        plt.gca().axes.get_xaxis().set_visible(False)
+        plt.gca().axes.get_yaxis().set_visible(False)
+        f.add_subplot(n_imgs, 3, i*3 + 2)
+        plt.imshow(seg_gmm[i], cmap='gray')
+        plt.gca().axes.get_xaxis().set_visible(False)
+        plt.gca().axes.get_yaxis().set_visible(False)
+        f.add_subplot(n_imgs, 3, i*3 + 3)
+        plt.imshow(seg_kmeans[i], cmap='gray')
+        plt.gca().axes.get_xaxis().set_visible(False)
+        plt.gca().axes.get_yaxis().set_visible(False)
+
+    plt.show()
+
+
+    # ========= EM CLASSIFIER IMPLEMENTATION
+
+    # Not yet finished
+    exit()
 
     # Make custom EM classifier
     em_cl = EM_classif(images_mat, images_seg_mat, model_init_img)
@@ -213,13 +341,13 @@ def main():
     # Train the classifier
     em_cl.fit()
 
+    img_idx = np.random.randint(0,49)
+
     # Predict single image
-    em_seg = em_cl.predict(rnd_idx)
+    em_seg = em_cl.predict(img_idx)
 
-    # Plot image
-    plot_img_and_seg(images_mat[rnd_idx], em_seg, images_seg_mat[rnd_idx])
-
-
+    # Plot the segmentation
+    plot_img_and_seg(images_mat[img_idx], em_seg, images_seg_mat[img_idx])
 
 
 
