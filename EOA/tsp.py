@@ -6,10 +6,10 @@ from copy import copy
 from copy import deepcopy
 
 # ======== Define simulation parameters
-n_Vertices = 32 # Amount of vertices (only valid if generating random graph)
-n_ts = 6 # Amount of travelling salesmen
+n_Vertices = 12 # Amount of vertices (only valid if generating random graph)
+n_ts = 3 # Amount of travelling salesmen
 n_iters = int(1e4) # Amount of iterations (generations) for algorithm
-algorithm = 'evo' # Choose algorithm from {local, evo, meme}
+algorithm = 'meme' # Choose algorithm from {local, evo, meme}
 vertex_xy_range = [0,1000] # Range of coordinates that vertices can have
 depot_xy_range = [400,600] # Range of coordinates that depot can have
 n_random_perms = n_Vertices*5 # Amount of random permutations
@@ -137,31 +137,6 @@ def local_search(G_in):
             G[rand_v2] = G[rand_v1]
             G[rand_v1] = v_tmp
 
-            # # SWAP BOUNDARIES ========================
-            #
-            # # Generate random boundary index
-            # rand_b = random.randint(0, len(boundaries) - 1)
-            # rand_swap_dir = random.randint(-1,1)
-            #
-            # # Augmented boundaries
-            # aug_bound = boundaries[:]
-            # aug_bound.insert(0, 0)
-            # aug_bound.insert(len(aug_bound), seq_length - 1)
-            #
-            # boundaries_swapped = False
-            #
-            # if random.random() > 0.8:
-            #     if rand_swap_dir == 1:
-            #         if aug_bound[rand_b] + 1 < aug_bound[rand_swap_dir]:
-            #             # Perform operation
-            #             boundaries_swapped = True
-            #     elif rand_swap_dir == -1:
-            #         if aug_bound[rand_b] - 1 > aug_bound[rand_swap_dir]:
-            #             # Perform operation
-            #             boundaries_swapped = True
-            #
-            # boundaries[rand_b] += rand_swap_dir
-
             # EVALUATE AND UPDATE ====================
 
             # Evaluate new solution
@@ -281,6 +256,141 @@ def evo_search(G_in):
                 population[idx2] = deepcopy(offspring2)
 
 
+def meme_search(G_in):
+    # Deep copy the graph
+    G = deepcopy(G_in)
+
+    # First vertex is the depot
+    depot = G[0]
+    del G[0]
+
+    # Length of sequence
+    seq_length = len(G)
+
+    # Shuffle graph
+    random.shuffle(G)
+
+    # Initial boundaries that separate individual agent sequences
+    boundaries = [(seq_length / n_ts) * i for i in xrange(1, n_ts)]
+
+    # Best fitness so far
+    best_fitness = 0
+
+    # Generate population
+    population = []
+
+    for i in range(pop_size):
+
+        # Generate random solution
+        random.shuffle(G)
+
+        # Add solution to population
+        population.append([deepcopy(G), deepcopy(boundaries)])
+
+
+    # Run evolutionary update for n_iters generations
+    for i in xrange(n_generations):
+
+        # Evaluate fitness for each individual in population
+        fitnesses = [evaluate_fitness(p, depot) for p in population]
+
+
+        # Sort population in descending fitness ***
+        population = [P for (F, P) in sorted(zip(fitnesses, population),
+                                             reverse=False,
+                                             key=lambda pair: pair[0])]
+
+        # Sort fitnesses
+        fitnesses.sort(reverse=False)
+
+        if i % (n_iters / 100) == 0:
+            plot_graph(population[0][0], population[0][1], depot)
+            plt.pause(0.1)
+
+        # Print fitness of best individual
+        if i % (n_iters / 100) == 0:
+            print "Generation: {}/{}: Fitness of best: {}, mean: {}, " \
+                  "median: {}".format(i,
+                                      n_iters,
+                                      evaluate_fitness(population[0], depot),
+                                      np.mean(fitnesses),
+                                      np.median(fitnesses))
+
+        # Calculate total fitness
+        total_fitness = sum(fitnesses)
+
+        fit_scaled = np.array(fitnesses)/total_fitness
+
+        # Make 100 new individuals from selected units
+        for j in range(pop_selection_size):
+
+            # Roulette selection
+            idx1 = np.random.choice(len(fitnesses), p=fit_scaled)
+            idx2 = np.random.choice(len(fitnesses), p=fit_scaled)
+
+            p1 = population[idx1]
+            p2 = population[idx2]
+
+            # Make new individuals
+            offspring1 = make_new_individual(p1,p2)
+            offspring2 = make_new_individual(p2,p2)
+
+            # Perform 2-opt on individuals
+            offspring1 = perform_2opt(offspring1)
+            offspring2 = perform_2opt(offspring2)
+
+
+            if evaluate_fitness(offspring1, depot) < evaluate_fitness(p1,depot):
+                population[idx1] = deepcopy(offspring1)
+            elif random.random() < mutation_alpha:
+                population[idx1] = deepcopy(offspring1)
+
+            if evaluate_fitness(offspring2, depot) < evaluate_fitness(p2,depot):
+                population[idx2]= deepcopy(offspring2)
+            elif random.random() < mutation_alpha:
+                population[idx2] = deepcopy(offspring2)
+
+
+def perform_2opt(sol):
+
+    # Get the sequence of nodes
+    seq = sol[0]
+
+    # Go over each node in the solution
+    for i in range(n_Vertices):
+
+        # Pick random node from the solution
+        rnd_num = random.randint(0, len(seq) - 2)
+
+        # Find second suitable edge
+        while True:
+            rnd_num_2 = random.randint(0, len(seq) - 2)
+            if abs(rnd_num_2 - rnd_num) > 1:
+                break
+
+
+        # Edge 1
+        edge_1 = [seq[rnd_num], seq[rnd_num + 1]]
+
+        # Edge 1
+        edge_2 = [seq[rnd_num_2], seq[rnd_num_2 + 1]]
+
+        # If edges cross then swap and break
+        if edges_cross(edge_1, edge_2):
+
+            # Make two sequences
+            testseq1 = deepcopy(seq)
+            testseq2 = deepcopy(seq)
+
+
+            break
+
+
+
+
+def edges_cross(edge1, edge2):
+    pass
+
 
 def make_new_individual(p1,p2):
 
@@ -352,10 +462,6 @@ def make_new_individual(p1,p2):
 
     # Return new individual
     return [offspring, boundaries]
-
-
-def meme_search(G):
-    pass
 
 
 def evaluate_fitness(solution, depot):
