@@ -45,6 +45,8 @@ def main():
         evo_search(G)
     elif algorithm == 'meme':
         meme_search(G)
+    elif algorithm == 'supermeme':
+        supermeme_search(G)
     else:
         print 'Error, algorithm not found, exiting simulation. '
         exit()
@@ -141,7 +143,6 @@ def local_search(G_in):
 
             # Evaluate new solution
             fitness = evaluate_fitness(solution, depot)
-
 
             if fitness > best_iteration_fitness:
                 best_iteration_fitness = fitness
@@ -351,6 +352,144 @@ def meme_search(G_in):
                 population[idx2] = deepcopy(offspring2)
 
 
+def supermeme_search(G_in):
+    # Deep copy the graph
+    G = deepcopy(G_in)
+
+    # First vertex is the depot
+    depot = G[0]
+    del G[0]
+
+    # Length of sequence
+    seq_length = len(G)
+
+    # Shuffle graph
+    random.shuffle(G)
+
+    # Initial boundaries that separate individual agent sequences
+    boundaries = [(seq_length / n_ts) * i for i in xrange(1, n_ts)]
+
+    # Best fitness so far
+    best_fitness = 0
+
+    # Generate population
+    population = []
+
+    for i in range(pop_size):
+
+        # Generate random solution
+        random.shuffle(G)
+
+        # Add solution to population
+        population.append([deepcopy(G), deepcopy(boundaries)])
+
+
+    # Run evolutionary update for n_iters generations
+    for i in xrange(n_generations):
+
+        # Evaluate fitness for each individual in population
+        fitnesses = [evaluate_fitness(p, depot) for p in population]
+
+
+        # Sort population in descending fitness ***
+        population = [P for (F, P) in sorted(zip(fitnesses, population),
+                                             reverse=False,
+                                             key=lambda pair: pair[0])]
+
+        # Sort fitnesses
+        fitnesses.sort(reverse=False)
+
+        if i % (n_iters / 100) == 0:
+            plot_graph(population[0][0], population[0][1], depot)
+            plt.pause(0.1)
+
+        # Print fitness of best individual
+        if i % (n_iters / 100) == 0:
+            print "Generation: {}/{}: Fitness of best: {}, mean: {}, " \
+                  "median: {}".format(i,
+                                      n_iters,
+                                      evaluate_fitness(population[0], depot),
+                                      np.mean(fitnesses),
+                                      np.median(fitnesses))
+
+        # Calculate total fitness
+        total_fitness = sum(fitnesses)
+
+        fit_scaled = np.array(fitnesses)/total_fitness
+
+        # Make 100 new individuals from selected units
+        for j in range(pop_selection_size):
+
+            # Roulette selection
+            idx1 = np.random.choice(len(fitnesses), p=fit_scaled)
+            idx2 = np.random.choice(len(fitnesses), p=fit_scaled)
+
+            p1 = population[idx1]
+            p2 = population[idx2]
+
+            # Make new individuals
+            offspring1 = make_new_individual(p1,p2)
+            offspring2 = make_new_individual(p2,p2)
+
+            if evaluate_fitness(offspring1, depot) < evaluate_fitness(p1,depot):
+                population[idx1] = deepcopy(offspring1)
+            elif random.random() < mutation_alpha:
+                population[idx1] = deepcopy(offspring1)
+
+            if evaluate_fitness(offspring2, depot) < evaluate_fitness(p2,depot):
+                population[idx2]= deepcopy(offspring2)
+            elif random.random() < mutation_alpha:
+                population[idx2] = deepcopy(offspring2)
+
+
+        # Perform Local search step: ===========
+
+        # Keep tabs of the best swap
+        best_swap = None
+
+        best_iteration_fitness = 0
+
+        for p in population:
+
+            # Sequence of individual
+            G = p[0]
+
+            for n in xrange(n_Vertices/5):
+
+                # SWAP VERTICES ==========================
+
+                #  Generate two random numbers
+                rand_v1, rand_v2 = generate_two_unique_random_numbers(0,
+                                                                      seq_length)
+
+                # Swap the corresponding vertices
+                v_tmp = G[rand_v2]
+                G[rand_v2] = G[rand_v1]
+                G[rand_v1] = v_tmp
+
+                # EVALUATE AND UPDATE ====================
+
+                # Evaluate new solution
+                fitness = evaluate_fitness(p, depot)
+
+                if fitness > best_iteration_fitness:
+                    best_iteration_fitness = fitness
+                    best_swap = (rand_v1, rand_v2)
+
+                # Swap back
+                v_tmp = G[rand_v2]
+                G[rand_v2] = G[rand_v1]
+                G[rand_v1] = v_tmp
+
+
+            if best_swap is not None:
+                # Swap the best greedy solution
+                v_tmp = G[best_swap[0]]
+                G[best_swap[0]] = G[best_swap[1]]
+                G[best_swap[1]] = v_tmp
+
+
+
 def perform_2opt(sol, depot):
 
     # Get the sequence of nodes
@@ -401,7 +540,6 @@ def perform_2opt(sol, depot):
                 sol = testIndividual1
             else:
                 sol = testIndividual2
-
 
 
 def edges_cross(edge1, edge2):
