@@ -79,15 +79,15 @@ tst_error = sum(tst_pred != Y_tst)/2000.0
 
 # Calculate maximum epsilon
 l = 2000.
-a = -1
+a = 0
 b = 1
-min_epsilon = math.sqrt(-math.log(0.99/2)*(((b-a)**2)/(2*l)))
+
+min_epsilon = math.sqrt(-math.log(0.01/2)*(((b-a)**2)/(2*l)))
 
 print "C : {} -> Test error for optimal c value : {}, min epsilon calculated " \
       "by hoeffding inequality" \
       ": {}".format(
     c_opt, tst_error, min_epsilon)
-
 
 fig = plt.figure()
 ax = fig.add_subplot(1,1,1)

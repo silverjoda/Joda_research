@@ -6,7 +6,7 @@ from copy import copy
 from copy import deepcopy
 
 # ======== Define simulation parameters
-n_Vertices = 12 # Amount of vertices (only valid if generating random graph)
+n_Vertices = 32 # Amount of vertices (only valid if generating random graph)
 n_ts = 3 # Amount of travelling salesmen
 n_iters = int(1e4) # Amount of iterations (generations) for algorithm
 algorithm = 'meme' # Choose algorithm from {local, evo, meme}
@@ -14,7 +14,7 @@ vertex_xy_range = [0,1000] # Range of coordinates that vertices can have
 depot_xy_range = [400,600] # Range of coordinates that depot can have
 n_random_perms = n_Vertices*5 # Amount of random permutations
 fitness_scaling_constant = 1e6 # Scale the fitness for visual convenience
-path_distance_delta_penalty = 5 # Constant which penalizes the difference
+path_distance_delta_penalty = 1 # Constant which penalizes the difference
 # between max and min tours
 
 # Evo algorithm parameters
@@ -336,8 +336,8 @@ def meme_search(G_in):
             offspring2 = make_new_individual(p2,p2)
 
             # Perform 2-opt on individuals
-            offspring1 = perform_2opt(offspring1)
-            offspring2 = perform_2opt(offspring2)
+            perform_2opt(offspring1, depot)
+            perform_2opt(offspring2, depot)
 
 
             if evaluate_fitness(offspring1, depot) < evaluate_fitness(p1,depot):
@@ -351,7 +351,7 @@ def meme_search(G_in):
                 population[idx2] = deepcopy(offspring2)
 
 
-def perform_2opt(sol):
+def perform_2opt(sol, depot):
 
     # Get the sequence of nodes
     seq = sol[0]
@@ -382,15 +382,35 @@ def perform_2opt(sol):
             testseq1 = deepcopy(seq)
             testseq2 = deepcopy(seq)
 
+            # Make swap on first sequence
+            tmp = testseq1[rnd_num + 1]
+            testseq1[rnd_num + 1] = testseq1[rnd_num_2]
+            testseq1[rnd_num_2] = tmp
 
-            break
+            testIndividual1 = [testseq1, sol[1]]
 
+            # Make swap on second sequence
+            tmp = testseq2[rnd_num + 1]
+            testseq2[rnd_num + 1] = testseq2[rnd_num_2 + 1]
+            testseq2[rnd_num_2 + 1] = tmp
+
+            testIndividual2 = [testseq2, sol[1]]
+
+            if evaluate_fitness(testIndividual1, depot) > evaluate_fitness(
+                    testIndividual2, depot):
+                sol = testIndividual1
+            else:
+                sol = testIndividual2
 
 
 
 def edges_cross(edge1, edge2):
-    pass
+    [A, B] = edge1
+    [C, D] = edge2
+    return ccw(A, C, D) != ccw(B, C, D) and ccw(A, B, C) != ccw(A, B, D)
 
+def ccw(A, B, C):
+    return (C[1] - A[1]) * (B[0] - A[0]) > (B[1] - A[1]) * (C[0] - A[0])
 
 def make_new_individual(p1,p2):
 
@@ -516,7 +536,7 @@ def evaluate_fitness(solution, depot):
     # We want fitness to be lower with higher penalty
     fitness = fitness_scaling_constant*(1/total_penalty)
 
-    return total_tour_length
+    return total_penalty
 
 
 def generate_random_tsp_vertices(m):
