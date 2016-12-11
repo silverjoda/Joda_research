@@ -166,9 +166,11 @@ def main():
 
 
     # Execution
-    n_rep = 1
+    n_rep = 3
     batchSize = 100
-    n_iters = 3000
+    n_iters = 300
+    every_n_samples = 1000
+    every_n_iters = every_n_samples/batchSize
 
     # 1) Train network on 69 dataset n_rep times ===============
 
@@ -179,7 +181,7 @@ def main():
     P = [0.005, 0.01, 0.1, 1.0]
 
     # Test accuracy matrix : (p, rep, n_iters/batchSize) ,
-    test_acc_mat = np.zeros((len(P), n_rep, n_iters/1000))
+    test_acc_mat = np.zeros((len(P), n_rep, n_iters/every_n_iters))
 
     # Test data
     X_tst = MNISTdatadict['X_tst69']
@@ -209,7 +211,7 @@ def main():
                 sess.run(raw_69_optim, feed_dict={X: batch[0],Y_69: batch[1]})
 
                 # Perform test accuracy
-                if i > 0 and (i % 1000 == 0):
+                if i > 0 and (i % every_n_iters == 0):
                     acc = sess.run(ACC_69, feed_dict={X: X_tst, Y_69: t_tst})
                     print 'Test accuracy: {}'.format(acc)
 
@@ -251,8 +253,12 @@ def main():
 
     print "Starting 69 training with pretrained conv layers"
 
+    # Test data
+    X_tst = MNISTdatadict['X_tst69']
+    t_tst = MNISTdatadict['t_tst69']
+
     # Test accuracy matrix : (p, rep, n_iters/batchSize) ,
-    test_acc_mat_pt = np.zeros((len(P), n_rep, n_iters / 1000))
+    test_acc_mat_pt = np.zeros((len(P), n_rep, n_iters/every_n_iters))
 
     for pi, p in enumerate(P):
 
@@ -276,7 +282,7 @@ def main():
                     1]})
 
                 # Perform test accuracy
-                if i > 0 and (i % 1000 == 0):
+                if i > 0 and (i % every_n_iters == 0):
                     acc = sess.run(ACC_69, feed_dict={X: X_tst, Y_69: t_tst})
                     print 'Test accuracy: {}'.format(acc)
 
@@ -311,7 +317,7 @@ def main():
     # === Run the training for all 4 dataset proportions of the 69 ====
     # =================================================================
     # Test accuracy matrix : (p, rep, n_iters/batchSize) ,
-    test_acc_mat_do = np.zeros((len(P), n_rep, n_iters / 1000))
+    test_acc_mat_do = np.zeros((len(P), n_rep, n_iters/every_n_iters))
 
     print "Starting raw 69 training with dropout"
 
@@ -336,7 +342,7 @@ def main():
                 sess.run(TL_69_optim_finetune, feed_dict={X: batch[0], Y_69: batch[1]})
 
                 # Perform test accuracy
-                if i > 0 and (i % 1000 == 0):
+                if i > 0 and (i % every_n_iters == 0):
                     acc = sess.run(ACC_69, feed_dict={X: X_tst, Y_69: t_tst})
                     print 'Test accuracy: {}'.format(acc)
 
@@ -378,7 +384,7 @@ def plot_acc_matrix(test_acc_matrix, title):
              'y-')
 
     plt.title(title)
-    plt.xlabel("Iters x 1000")
+    plt.xlabel("Iters x 10")
     plt.ylabel("Test accuracy")
     plt.legend(["p = 0.005","p = 0.01","p = 0.1","p = 1"])
     plt.ylim(0,1.7)
