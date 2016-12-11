@@ -1,11 +1,8 @@
 import numpy as np
-
-from keras.datasets import mnist
 import tensorflow as tf
-
+from keras.datasets import mnist
 from copy import deepcopy
-
-# TODO: Add tensorflow naming, scope and datalogging ERRRYWHERE!!!!
+import matplotlib.pyplot as plt
 
 def onehot(labels):
     labels_arr = np.array(labels)
@@ -37,8 +34,7 @@ def getMNISTData():
         n_samples = batch_size * (
         int(n_69_samples * p) / batch_size)  # round to the batch size
         X_trn69[p] = X_trn[t_trn >= 6][:n_samples]
-        t_trn69[p] = t_trn[t_trn >= 6][:n_samples] - 6
-        t_trn69[p] = onehot(t_trn69[p])
+        t_trn69[p] = onehot(t_trn[t_trn >= 6][:n_samples] - 6)
 
     X_tst69 = X_tst[t_tst >= 6]  # (3969, 28, 28)
     t_tst69 = t_tst[t_tst >= 6] - 6  # (3969,)
@@ -60,9 +56,6 @@ def getMNISTData():
         X_trn69[p] = convert_to_float(np.expand_dims(X_trn69[p], axis=3))
     X_tst69 = convert_to_float(np.expand_dims(X_tst69, axis=3))
 
-    for p in P:
-        X_trn69[p] = convert_to_float(X_trn69[p])
-
     return {'X_trn05' : X_trn05, 'X_tst05' : X_tst05,
             'X_trn69' : X_trn69, 'X_tst69' : X_tst69,
             't_trn05' : t_trn05, 't_tst05' : t_tst05,
@@ -77,14 +70,13 @@ def getMNISTbatch(X,Y,n):
 
         return X, Y
 
-
     # Make index vector
     indexes = np.arange(len(X))
 
     # Shuffle vector
     np.random.shuffle(indexes)
 
-    return (X[indexes[:n]], Y[indexes[:n]])
+    return (deepcopy(X[indexes[:n]]), deepcopy(Y[indexes[:n]]))
 
 
 
@@ -96,15 +88,15 @@ def main():
     # ==================== Make weights ====================
     # Weights ___________________________________________________
     w_conv1 = tf.Variable(tf.random_normal(shape=[3, 3, 1, 32],
-                                           stddev=0.05))
+                                           stddev=0.01))
     w_conv2 = tf.Variable(tf.random_normal(shape=[3, 3, 32, 32],
-                                           stddev=0.05))
+                                           stddev=0.01))
 
     w_fc_05 = tf.Variable(tf.random_normal(shape=[14 * 14 * 32, 6],
-                                           stddev=0.05))
+                                           stddev=0.01))
 
     w_fc_69 = tf.Variable(tf.random_normal(shape=[14 * 14 * 32, 4],
-                                           stddev=0.05))
+                                           stddev=0.01))
 
     # Biases ___________________________________________
     b_conv1 = tf.Variable(tf.constant(0., shape=[32]))
@@ -114,6 +106,9 @@ def main():
 
     # Make a list of only the fc weights for the transfer learning
     fc_weights_69_TL = [w_fc_69, b_fc_69]
+
+    # Make list of variables that will be reinitialized even during pretraining
+    reinit_vars = [w_fc_05, w_fc_69, b_fc_05, b_fc_69]
 
     # ==================== Make network ====================
     X = tf.placeholder(dtype=tf.float32, shape=[None, 28, 28, 1])
@@ -147,7 +142,6 @@ def main():
     predict_05 = tf.argmax(tf.nn.softmax(l_fc_05), 1)
     predict_69 = tf.argmax(tf.nn.softmax(l_fc_69), 1)
 
-
     # Accuracy operation
     ACC_05 = tf.reduce_mean(tf.cast(tf.equal(predict_05, tf.argmax(Y_05, 1)),
                                     tf.float32))
@@ -161,22 +155,20 @@ def main():
 
     # Plan and the respective optimizers:
     # 1) Train network on 69 dataset n times
-    raw_69_optim = tf.train.AdamOptimizer(0.01).minimize(CE_69)
+    raw_69_optim = tf.train.AdamOptimizer(0.0005).minimize(CE_69)
 
     # 2) Train network on 05 dataset n times
-    raw_05_optim = tf.train.AdamOptimizer(0.01).minimize(CE_05)
+    raw_05_optim = tf.train.AdamOptimizer(0.0005).minimize(CE_05)
 
     # 3) Train network on 69 with conv layers from the 05 dataset n times
-    TL_69_optim_freeze_conv = tf.train.AdamOptimizer(0.01).minimize(CE_69,
+    TL_69_optim_freeze_conv = tf.train.AdamOptimizer(0.001).minimize(CE_69,
                                                                     var_list=fc_weights_69_TL)
 
-    # 4) Train network on 69 with conv layers from 05 without freezing n times
-    TL_69_optim_finetune = tf.train.AdamOptimizer(0.01).minimize(CE_69)
 
     # Execution
     n_rep = 1
     batchSize = 100
-    n_iters = 2000
+    n_iters = 3000
 
     # 1) Train network on 69 dataset n_rep times ===============
 
@@ -193,9 +185,11 @@ def main():
     X_tst = MNISTdatadict['X_tst69']
     t_tst = MNISTdatadict['t_tst69']
 
+
     # === Run the training for all 4 dataset proportions of the 69 ====
     # =================================================================
     for pi,p in enumerate(P):
+
         print 'Testing for proportion: {}'.format(p)
 
         # Data
@@ -224,8 +218,6 @@ def main():
                     tst_ctr += 1
 
 
-    exit()
-
     # === DO the 05 pretraining ======================================
     # ================================================================
 
@@ -236,6 +228,10 @@ def main():
     X_data = MNISTdatadict['X_trn05']
     Y_data = MNISTdatadict['t_trn05']
     X_tst = MNISTdatadict['X_tst05']
+    t_tst = MNISTdatadict['t_tst05']
+
+    print "Starting 05 training. "
+
 
     # Train the 05 network
     # Run training n_repetition times
@@ -244,7 +240,7 @@ def main():
         sess.run(raw_05_optim, feed_dict={X : batch[0], Y_05: batch[1]})
 
         # Perform test accuracy
-        if i > 0 and n_iters % 1000 == 0:
+        if i > 0 and i % 1000 == 0:
             acc = sess.run(ACC_05, feed_dict={X : X_tst, Y_05: t_tst})
             print 'Pretraining with 05 net: Iter: {} Test accuracy: {}'\
                 .format(i, acc)
@@ -253,11 +249,14 @@ def main():
     # === Do the 69 with pretrained conv layers ======================
     # ================================================================
 
-    # Test accuracy matrix : (p, rep, n_iters/batchSize) ,
-    test_acc_mat_pt = np.zeros((len(P), n_rep, n_iters / batchSize))
+    print "Starting 69 training with pretrained conv layers"
 
-    # Run the training for all 4 dataset proportions of the 69
+    # Test accuracy matrix : (p, rep, n_iters/batchSize) ,
+    test_acc_mat_pt = np.zeros((len(P), n_rep, n_iters / 1000))
+
     for pi, p in enumerate(P):
+
+        print 'Testing for proportion: {}'.format(p)
 
         # Data
         X_data = MNISTdatadict['X_trn69'][p]
@@ -265,27 +264,29 @@ def main():
 
         # Run training n_repetition times
         for r in range(n_rep):
+            print 'Starting rep: {}'.format(r + 1)
+            # Reset variables
+            sess.run(tf.initialize_variables(reinit_vars))
 
             tst_ctr = 0
             for i in range(n_iters + 1):
                 batch = getMNISTbatch(X_data, Y_data, batchSize)
-                sess.run(TL_69_optim_freeze_conv, feed_dict={X: batch[0],
-                                                             Y_69: batch[1]})
+
+                sess.run(TL_69_optim_freeze_conv, feed_dict={X: batch[0], Y_69: batch[
+                    1]})
 
                 # Perform test accuracy
-                if i > 0 and n_iters % 1000 == 0:
-                    acc = sess.run(ACC_69, feed_dict={X: X_tst,Y_69: t_tst})
-                    print 'Test accuracy: {}'
+                if i > 0 and (i % 1000 == 0):
+                    acc = sess.run(ACC_69, feed_dict={X: X_tst, Y_69: t_tst})
+                    print 'Test accuracy: {}'.format(acc)
 
                     # Add accuracy to our log
                     test_acc_mat_pt[pi, r, tst_ctr] = acc
                     tst_ctr += 1
 
 
-    # Close session
+    # Close session because we are going to modify the network
     sess.close()
-
-
 
     # ==== Modify the network with dropout ========================
     # =============================================================
@@ -297,32 +298,47 @@ def main():
     l_fc_69 = tf.nn.relu(tf.matmul(fc_reshape_DO, w_fc_69) + b_fc_69)
     l_fc_69 = tf.nn.dropout(l_fc_69, keep_prob=0.5)
 
+    CE_69 = tf.reduce_mean(
+        tf.nn.softmax_cross_entropy_with_logits(l_fc_69, Y_69))
+
+
+    # 4) Train network on 69 with conv layers from 05 without freezing n times
+    TL_69_optim_finetune = tf.train.AdamOptimizer(0.001).minimize(CE_69)
+
     # Make new session
     sess = tf.Session()
 
     # === Run the training for all 4 dataset proportions of the 69 ====
     # =================================================================
     # Test accuracy matrix : (p, rep, n_iters/batchSize) ,
-    test_acc_mat_do = np.zeros((len(P), n_rep, n_iters / batchSize))
+    test_acc_mat_do = np.zeros((len(P), n_rep, n_iters / 1000))
+
+    print "Starting raw 69 training with dropout"
 
     for pi, p in enumerate(P):
 
+        print 'Testing for proportion: {}'.format(p)
+
         # Data
-        X_data = MNISTdatadict['X_train69'][p]
-        Y_data = MNISTdatadict['t_train69'][p]
+        X_data = MNISTdatadict['X_trn69'][p]
+        Y_data = MNISTdatadict['t_trn69'][p]
 
         # Run training n_repetition times
         for r in range(n_rep):
+            print 'Starting rep: {}'.format(r + 1)
+            # Reset variables
+            sess.run(tf.initialize_all_variables())
 
             tst_ctr = 0
             for i in range(n_iters + 1):
                 batch = getMNISTbatch(X_data, Y_data, batchSize)
-                sess.run(raw_69_optim, feed_dict={X:batch[0],Y_69: batch[1]})
+
+                sess.run(TL_69_optim_finetune, feed_dict={X: batch[0], Y_69: batch[1]})
 
                 # Perform test accuracy
-                if i > 0 and n_iters % 1000 == 0:
-                    acc = sess.run(ACC_69, feed_dict={X:X_tst,Y_69: t_tst})
-                    print 'Test accuracy: {}'
+                if i > 0 and (i % 1000 == 0):
+                    acc = sess.run(ACC_69, feed_dict={X: X_tst, Y_69: t_tst})
+                    print 'Test accuracy: {}'.format(acc)
 
                     # Add accuracy to our log
                     test_acc_mat_do[pi, r, tst_ctr] = acc
@@ -331,9 +347,43 @@ def main():
 
 
     # ====== Do a bunch of plotting ==================================
+    print "Plotting test errors: "
 
+    # test_acc_mat    - 69 raw
+    # test_acc_mat_pt - pretrained errors on 69
+    # test_acc_mat_do - 69 with dropout
 
+    # Plot the 69 raw training
+    plot_acc_matrix(test_acc_mat, "Raw 69 training")
 
+    # Plot the 69 training with pretrained layers
+    plot_acc_matrix(test_acc_mat_pt, "69 training with pretraining")
+
+    # Plot the 69 raw training with dropout
+    plot_acc_matrix(test_acc_mat_do, "Raw 69 training with dropout")
+
+def plot_acc_matrix(test_acc_matrix, title):
+
+    # Averaged test errors
+    mat = np.mean(test_acc_matrix, axis=1)
+
+    # Plot vector
+    t = np.arange(mat.shape[1])
+
+    # Make figure
+    fig = plt.figure()
+
+    # red dashes, blue squares and green triangles
+    plt.plot(t, mat[0], 'r-', t, mat[1], 'b-', t, mat[2], 'g-', t, mat[3],
+             'y-')
+
+    plt.title(title)
+    plt.xlabel("Iters x 1000")
+    plt.ylabel("Test accuracy")
+    plt.legend(["p = 0.005","p = 0.01","p = 0.1","p = 1"])
+    plt.ylim(0,1.7)
+
+    plt.savefig("{}.png".format(title.replace(" ", "")), dpi=100)
 
 
 if __name__ == "__main__":
