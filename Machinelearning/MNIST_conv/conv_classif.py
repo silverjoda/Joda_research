@@ -31,13 +31,14 @@ def getMNISTData():
     # extract 0 to 6 data (dictionary using the proportion as a key)
     X_trn69 = {}
     t_trn69 = {}
-    n_69_samples = np.sum(t_trn[t_trn >= 6])  # the number of all 6-9 samples
+    n_69_samples = len(t_trn[t_trn >= 6])  # the number of all 6-9 samples
 
     for p in P:
         n_samples = batch_size * (
         int(n_69_samples * p) / batch_size)  # round to the batch size
         X_trn69[p] = X_trn[t_trn >= 6][:n_samples]
         t_trn69[p] = t_trn[t_trn >= 6][:n_samples] - 6
+        t_trn69[p] = onehot(t_trn69[p])
 
     X_tst69 = X_tst[t_tst >= 6]  # (3969, 28, 28)
     t_tst69 = t_tst[t_tst >= 6] - 6  # (3969,)
@@ -45,6 +46,7 @@ def getMNISTData():
     # Turn labels into onehot
     t_trn05 = onehot(t_trn05)
     t_tst05 = onehot(t_tst05)
+    t_tst69 = onehot(t_tst69)
 
     # convert to floats having range [0, 1]
     def convert_to_float(array):
@@ -114,9 +116,9 @@ def main():
     fc_weights_69_TL = [w_fc_69, b_fc_69]
 
     # ==================== Make network ====================
-    X = tf.placeholder(dtype=tf.float32, shape=[-1, 28, 28, 1])
-    Y_05 = tf.placeholder(dtype=tf.float32, shape=[-1, 6])
-    Y_69 = tf.placeholder(dtype=tf.float32, shape=[-1, 4])
+    X = tf.placeholder(dtype=tf.float32, shape=[None, 28, 28, 1])
+    Y_05 = tf.placeholder(dtype=tf.float32, shape=[None, 6])
+    Y_69 = tf.placeholder(dtype=tf.float32, shape=[None, 4])
 
     # Convolutional layers
     l_conv1 = tf.nn.relu(
@@ -128,7 +130,7 @@ def main():
     mp_layer = tf.nn.max_pool(l_conv2, ksize=[1, 2, 2, 1], strides=[1, 2, 2, 1],
                               padding='SAME')
     # Reshape into vector
-    fc_reshape = tf.reshape(mp_layer, shape=(-1, 14 * 14))
+    fc_reshape = tf.reshape(mp_layer, shape=(-1, 14 * 14 * 32))
 
     # Fully connected layers 05 datasets
     l_fc_05 = tf.nn.relu(tf.matmul(fc_reshape, w_fc_05) + b_fc_05)
@@ -142,11 +144,16 @@ def main():
     CE_69 = tf.reduce_mean(
         tf.nn.softmax_cross_entropy_with_logits(l_fc_69, Y_69))
 
+    predict_05 = tf.argmax(tf.nn.softmax(l_fc_05), 1)
+    predict_69 = tf.argmax(tf.nn.softmax(l_fc_69), 1)
+
+
     # Accuracy operation
-    ACC_05 = tf.reduce_mean(tf.reduce_all(tf.equal(tf.sign(tf.nn.softmax(
-        l_fc_69)), Y_69)))
-    ACC_69 = tf.reduce_mean(tf.reduce_all(tf.equal(tf.sign(tf.nn.softmax(
-        l_fc_69)), Y_69)))
+    ACC_05 = tf.reduce_mean(tf.cast(tf.equal(predict_05, tf.argmax(Y_05, 1)),
+                                    tf.float32))
+
+    ACC_69 = tf.reduce_mean(tf.cast(tf.equal(predict_69, tf.argmax(Y_69, 1)),
+                                    tf.float32))
 
     # Training ===================================================
 
@@ -167,9 +174,9 @@ def main():
     TL_69_optim_finetune = tf.train.AdamOptimizer(0.01).minimize(CE_69)
 
     # Execution
-    n_rep = 3
+    n_rep = 1
     batchSize = 100
-    n_iters = 10000
+    n_iters = 2000
 
     # 1) Train network on 69 dataset n_rep times ===============
 
@@ -180,7 +187,7 @@ def main():
     P = [0.005, 0.01, 0.1, 1.0]
 
     # Test accuracy matrix : (p, rep, n_iters/batchSize) ,
-    test_acc_mat = np.zeros((len(P), n_rep, n_iters/batchSize))
+    test_acc_mat = np.zeros((len(P), n_rep, n_iters/1000))
 
     # Test data
     X_tst = MNISTdatadict['X_tst69']
@@ -189,28 +196,35 @@ def main():
     # === Run the training for all 4 dataset proportions of the 69 ====
     # =================================================================
     for pi,p in enumerate(P):
+        print 'Testing for proportion: {}'.format(p)
 
         # Data
-        X = MNISTdatadict['X_train69'][p]
-        Y = MNISTdatadict['t_train69'][p]
+        X_data = MNISTdatadict['X_trn69'][p]
+        Y_data = MNISTdatadict['t_trn69'][p]
 
         # Run training n_repetition times
         for r in range(n_rep):
+            print 'Starting rep: {}'.format(r + 1)
+            # Reset variables
+            sess.run(tf.initialize_all_variables())
 
             tst_ctr = 0
             for i in range(n_iters + 1):
-                batch = getMNISTbatch(X,Y,batchSize)
-                sess.run(raw_69_optim, feed_dict={batch[0], batch[1]})
+                batch = getMNISTbatch(X_data,Y_data,batchSize)
+
+                sess.run(raw_69_optim, feed_dict={X: batch[0],Y_69: batch[1]})
 
                 # Perform test accuracy
-                if i > 0 and n_iters % 1000 == 0:
-                    acc = sess.run(ACC_69, feed_dict={X_tst, t_tst})
-                    print 'Test accuracy: {}'
+                if i > 0 and (i % 1000 == 0):
+                    acc = sess.run(ACC_69, feed_dict={X: X_tst, Y_69: t_tst})
+                    print 'Test accuracy: {}'.format(acc)
 
                     # Add accuracy to our log
                     test_acc_mat[pi, r, tst_ctr] = acc
                     tst_ctr += 1
 
+
+    exit()
 
     # === DO the 05 pretraining ======================================
     # ================================================================
@@ -219,19 +233,19 @@ def main():
     sess.run(tf.initialize_all_variables())
 
     # Data
-    X = MNISTdatadict['X_train05']
-    Y = MNISTdatadict['t_train05']
+    X_data = MNISTdatadict['X_trn05']
+    Y_data = MNISTdatadict['t_trn05']
     X_tst = MNISTdatadict['X_tst05']
 
     # Train the 05 network
     # Run training n_repetition times
     for i in range(n_iters + 1):
-        batch = getMNISTbatch(X, Y, batchSize)
-        sess.run(raw_05_optim, feed_dict={batch[0], batch[1]})
+        batch = getMNISTbatch(X_data, Y_data, batchSize)
+        sess.run(raw_05_optim, feed_dict={X : batch[0], Y_05: batch[1]})
 
         # Perform test accuracy
         if i > 0 and n_iters % 1000 == 0:
-            acc = sess.run(ACC_05, feed_dict={X_tst, t_tst})
+            acc = sess.run(ACC_05, feed_dict={X : X_tst, Y_05: t_tst})
             print 'Pretraining with 05 net: Iter: {} Test accuracy: {}'\
                 .format(i, acc)
 
@@ -246,20 +260,21 @@ def main():
     for pi, p in enumerate(P):
 
         # Data
-        X = MNISTdatadict['X_train69'][p]
-        Y = MNISTdatadict['t_train69'][p]
+        X_data = MNISTdatadict['X_trn69'][p]
+        Y_data = MNISTdatadict['t_trn69'][p]
 
         # Run training n_repetition times
         for r in range(n_rep):
 
             tst_ctr = 0
             for i in range(n_iters + 1):
-                batch = getMNISTbatch(X, Y, batchSize)
-                sess.run(TL_69_optim_freeze_conv, feed_dict={batch[0], batch[1]})
+                batch = getMNISTbatch(X_data, Y_data, batchSize)
+                sess.run(TL_69_optim_freeze_conv, feed_dict={X: batch[0],
+                                                             Y_69: batch[1]})
 
                 # Perform test accuracy
                 if i > 0 and n_iters % 1000 == 0:
-                    acc = sess.run(ACC_69, feed_dict={X_tst, t_tst})
+                    acc = sess.run(ACC_69, feed_dict={X: X_tst,Y_69: t_tst})
                     print 'Test accuracy: {}'
 
                     # Add accuracy to our log
@@ -293,20 +308,20 @@ def main():
     for pi, p in enumerate(P):
 
         # Data
-        X = MNISTdatadict['X_train69'][p]
-        Y = MNISTdatadict['t_train69'][p]
+        X_data = MNISTdatadict['X_train69'][p]
+        Y_data = MNISTdatadict['t_train69'][p]
 
         # Run training n_repetition times
         for r in range(n_rep):
 
             tst_ctr = 0
             for i in range(n_iters + 1):
-                batch = getMNISTbatch(X, Y, batchSize)
-                sess.run(raw_69_optim, feed_dict={batch[0], batch[1]})
+                batch = getMNISTbatch(X_data, Y_data, batchSize)
+                sess.run(raw_69_optim, feed_dict={X:batch[0],Y_69: batch[1]})
 
                 # Perform test accuracy
                 if i > 0 and n_iters % 1000 == 0:
-                    acc = sess.run(ACC_69, feed_dict={X_tst, t_tst})
+                    acc = sess.run(ACC_69, feed_dict={X:X_tst,Y_69: t_tst})
                     print 'Test accuracy: {}'
 
                     # Add accuracy to our log
