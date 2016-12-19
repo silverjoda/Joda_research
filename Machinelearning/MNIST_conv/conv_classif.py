@@ -3,6 +3,7 @@ import tensorflow as tf
 from keras.datasets import mnist
 from copy import deepcopy
 import matplotlib.pyplot as plt
+import csv
 
 
 def onehot(labels):
@@ -186,11 +187,11 @@ def main():
     finetune_69_optim = tf.train.AdamOptimizer(0.0003).minimize(CE_69)
 
     # Execution
-    n_rep = 1
+    n_rep = 10
     batchSize = 100
-    n_iters = 200
+    n_iters = 1000
     every_n_samples = 1000
-    every_n_iters = every_n_samples/batchSize
+    every_n_iters = every_n_samples / batchSize
 
     # 1) Train network on 69 dataset n_rep times ===============
 
@@ -443,6 +444,20 @@ def main():
     # Plot the 69 raw training with dropout
     plot_acc_matrix(test_acc_mat_do, "Raw 69 training with dropout")
 
+
+    # Matrix list
+    mat_list = [test_acc_mat,
+                test_acc_mat_pt,
+                test_acc_mat_pt_finetune,
+                test_acc_mat_do]
+
+    # (p, rep, iters)
+
+    # write it
+    with open('Testaccuracies.csv', 'w') as csvfile:
+        writer = csv.writer(csvfile)
+        [writer.writerow(np.mean(mat[:,:,-1], axis=1)) for mat in mat_list]
+
 def plot_acc_matrix(test_acc_matrix, title):
 
     # Averaged test errors
@@ -458,11 +473,13 @@ def plot_acc_matrix(test_acc_matrix, title):
     plt.plot(t, mat[0], 'r-', t, mat[1], 'b-', t, mat[2], 'g-', t, mat[3],
              'y-')
 
+    #plt.xscale('log')
     plt.title(title)
     plt.xlabel("Iters x 10")
     plt.ylabel("Test accuracy")
     plt.legend(["p = 0.005","p = 0.01","p = 0.1","p = 1"])
-    plt.ylim(0,1.7)
+    plt.ylim(0.6,1.7)
+    plt.xlim(0, 40)
 
     plt.savefig("{}.png".format(title.replace(" ", "")), dpi=100)
 
