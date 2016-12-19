@@ -5,13 +5,6 @@ from copy import deepcopy
 import matplotlib.pyplot as plt
 
 
-import tflearn
-from tflearn.layers.core import input_data, dropout, fully_connected
-from tflearn.layers.conv import conv_2d, max_pool_2d
-from tflearn.layers.normalization import local_response_normalization
-from tflearn.layers.estimator import regression
-
-
 def onehot(labels):
     labels_arr = np.array(labels)
     onehotlabs = np.zeros((len(labels), np.max(labels) + 1))
@@ -189,10 +182,13 @@ def main():
     TL_69_optim_freeze_conv = tf.train.AdamOptimizer(0.001).minimize(CE_69,
                                                                     var_list=fc_weights_69_TL)
 
+    # 4) Train network on 69 dataset n times with finetune
+    finetune_69_optim = tf.train.AdamOptimizer(0.0003).minimize(CE_69)
+
     # Execution
     n_rep = 1
     batchSize = 100
-    n_iters = 500
+    n_iters = 200
     every_n_samples = 1000
     every_n_iters = every_n_samples/batchSize
 
@@ -317,8 +313,7 @@ def main():
     # === Do the 69 with pretrained conv layers (FINETUNED) ==========
     # ================================================================
 
-    # xx) Train network on 69 dataset n times with finetune
-    finetune_69_optim = tf.train.AdamOptimizer(0.0003).minimize(CE_69)
+
 
     print "Starting 69 training with pretrained conv layers, non-frozen"
 
@@ -369,10 +364,12 @@ def main():
     # ==== Modify the network with dropout ========================
     # =============================================================
 
+
+
     # Dropout from the conv features
     fc_reshape_DO = tf.nn.dropout(fc_reshape, keep_prob=0.5)
 
-    l_fc_rs = tf.nn.relu(tf.matmul(fc_reshape_DO, w_fc_69) + b_fc_69)
+    l_fc_rs = tf.nn.relu(tf.matmul(fc_reshape_DO, w_fc_rs) + b_fc_rs)
 
     fc_rs_DO = tf.nn.dropout(l_fc_rs, keep_prob=0.5)
 
