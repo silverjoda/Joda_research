@@ -4,6 +4,14 @@ from keras.datasets import mnist
 from copy import deepcopy
 import matplotlib.pyplot as plt
 
+
+import tflearn
+from tflearn.layers.core import input_data, dropout, fully_connected
+from tflearn.layers.conv import conv_2d, max_pool_2d
+from tflearn.layers.normalization import local_response_normalization
+from tflearn.layers.estimator import regression
+
+
 def onehot(labels):
     labels_arr = np.array(labels)
     onehotlabs = np.zeros((len(labels), np.max(labels) + 1))
@@ -79,43 +87,55 @@ def getMNISTbatch(X,Y,n):
     return (deepcopy(X[indexes[:n]]), deepcopy(Y[indexes[:n]]))
 
 
-
 def main():
 
     # Get data
     MNISTdatadict = getMNISTData()
 
     # ==================== Make weights ====================
+
     # Weights ___________________________________________________
-    w_conv1 = tf.Variable(tf.random_normal(shape=[3, 3, 1, 32],
-                                           stddev=0.01))
-    w_conv2 = tf.Variable(tf.random_normal(shape=[3, 3, 32, 32],
-                                           stddev=0.01))
+    w_conv1 = tf.get_variable(name="w_conv1",
+                              shape=[3, 3, 1, 32],
+                              initializer=tf.contrib.layers.xavier_initializer_conv2d())
 
-    w_fc_05 = tf.Variable(tf.random_normal(shape=[14 * 14 * 32, 6],
-                                           stddev=0.01))
+    w_conv2 = tf.get_variable(name="w_conv2",
+                              shape=[3, 3, 32, 32],
+                              initializer=tf.contrib.layers.xavier_initializer_conv2d())
 
-    w_fc_69 = tf.Variable(tf.random_normal(shape=[14 * 14 * 32, 4],
-                                           stddev=0.01))
+    w_fc_rs = tf.get_variable(name="w_fc_rs",
+                              shape=[14 * 14 * 32, 128],
+                              initializer=tf.contrib.layers.xavier_initializer())
+
+    w_fc_05 = tf.get_variable(name="w_fc_05",
+                              shape=[128, 6],
+                              initializer=tf.contrib.layers.xavier_initializer())
+
+    w_fc_69 = tf.get_variable(name="w_fc_69",
+                              shape=[128, 4],
+                              initializer=tf.contrib.layers.xavier_initializer())
+
 
     # Biases ___________________________________________
     b_conv1 = tf.Variable(tf.constant(0., shape=[32]))
     b_conv2 = tf.Variable(tf.constant(0., shape=[32]))
+    b_fc_rs = tf.Variable(tf.constant(0., shape=[1]))
     b_fc_05 = tf.Variable(tf.constant(0., shape=[1]))
     b_fc_69 = tf.Variable(tf.constant(0., shape=[1]))
 
     # Make a list of only the fc weights for the transfer learning
-    fc_weights_69_TL = [w_fc_69, b_fc_69]
+    fc_weights_69_TL = [w_fc_rs, w_fc_69, b_fc_rs, b_fc_69]
 
     # Make list of variables that will be reinitialized even during pretraining
-    reinit_vars = [w_fc_05, w_fc_69, b_fc_05, b_fc_69]
+    reinit_vars = [w_fc_rs, w_fc_05, w_fc_69, b_fc_rs, b_fc_05, b_fc_69]
 
     # ==================== Make network ====================
+
     X = tf.placeholder(dtype=tf.float32, shape=[None, 28, 28, 1])
     Y_05 = tf.placeholder(dtype=tf.float32, shape=[None, 6])
     Y_69 = tf.placeholder(dtype=tf.float32, shape=[None, 4])
 
-    # Convolutional layers
+    #Convolutional layers
     l_conv1 = tf.nn.relu(
         tf.nn.conv2d(X, w_conv1, [1, 1, 1, 1], 'SAME') + b_conv1)
     l_conv2 = tf.nn.relu(
@@ -127,11 +147,14 @@ def main():
     # Reshape into vector
     fc_reshape = tf.reshape(mp_layer, shape=(-1, 14 * 14 * 32))
 
+    # First fully connected layers
+    l_fc_rs =  tf.nn.relu(tf.matmul(fc_reshape, w_fc_rs) + b_fc_rs)
+
     # Fully connected layers 05 datasets
-    l_fc_05 = tf.nn.relu(tf.matmul(fc_reshape, w_fc_05) + b_fc_05)
+    l_fc_05 = tf.matmul(l_fc_rs, w_fc_05) + b_fc_05
 
     # Fully connected layers 69 datasets
-    l_fc_69 = tf.nn.relu(tf.matmul(fc_reshape, w_fc_69) + b_fc_69)
+    l_fc_69 = tf.matmul(l_fc_rs, w_fc_69) + b_fc_69
 
     # Loss functions
     CE_05 = tf.reduce_mean(
@@ -149,26 +172,27 @@ def main():
     ACC_69 = tf.reduce_mean(tf.cast(tf.equal(predict_69, tf.argmax(Y_69, 1)),
                                     tf.float32))
 
+
+
     # Training ===================================================
 
     # OPTIMIZERS :
 
     # Plan and the respective optimizers:
     # 1) Train network on 69 dataset n times
-    raw_69_optim = tf.train.AdamOptimizer(0.0005).minimize(CE_69)
+    raw_69_optim = tf.train.AdamOptimizer(0.001).minimize(CE_69)
 
     # 2) Train network on 05 dataset n times
-    raw_05_optim = tf.train.AdamOptimizer(0.0005).minimize(CE_05)
+    raw_05_optim = tf.train.AdamOptimizer(0.001).minimize(CE_05)
 
     # 3) Train network on 69 with conv layers from the 05 dataset n times
     TL_69_optim_freeze_conv = tf.train.AdamOptimizer(0.001).minimize(CE_69,
                                                                     var_list=fc_weights_69_TL)
 
-
     # Execution
-    n_rep = 3
+    n_rep = 1
     batchSize = 100
-    n_iters = 300
+    n_iters = 500
     every_n_samples = 1000
     every_n_iters = every_n_samples/batchSize
 
@@ -248,10 +272,10 @@ def main():
                 .format(i, acc)
 
 
-    # === Do the 69 with pretrained conv layers ======================
+    # === Do the 69 with pretrained conv layers(FROZEN) ======================
     # ================================================================
 
-    print "Starting 69 training with pretrained conv layers"
+    print "Starting 69 training with pretrained conv layers frozen"
 
     # Test data
     X_tst = MNISTdatadict['X_tst69']
@@ -290,6 +314,54 @@ def main():
                     test_acc_mat_pt[pi, r, tst_ctr] = acc
                     tst_ctr += 1
 
+    # === Do the 69 with pretrained conv layers (FINETUNED) ==========
+    # ================================================================
+
+    # xx) Train network on 69 dataset n times with finetune
+    finetune_69_optim = tf.train.AdamOptimizer(0.0003).minimize(CE_69)
+
+    print "Starting 69 training with pretrained conv layers, non-frozen"
+
+    # Test data
+    X_tst = MNISTdatadict['X_tst69']
+    t_tst = MNISTdatadict['t_tst69']
+
+    # Test accuracy matrix : (p, rep, n_iters/batchSize) ,
+    test_acc_mat_pt_finetune = np.zeros(
+        (len(P), n_rep, n_iters / every_n_iters))
+
+
+    for pi, p in enumerate(P):
+
+        print 'Testing for proportion: {}'.format(p)
+
+        # Data
+        X_data = MNISTdatadict['X_trn69'][p]
+        Y_data = MNISTdatadict['t_trn69'][p]
+
+        # Run training n_repetition times
+        for r in range(n_rep):
+            print 'Starting rep: {}'.format(r + 1)
+            # Reset variables
+            sess.run(tf.initialize_variables(reinit_vars))
+
+            tst_ctr = 0
+            for i in range(n_iters + 1):
+                batch = getMNISTbatch(X_data, Y_data, batchSize)
+
+                sess.run(finetune_69_optim,
+                         feed_dict={X: batch[0], Y_69: batch[
+                             1]})
+
+                # Perform test accuracy
+                if i > 0 and (i % every_n_iters == 0):
+                    acc = sess.run(ACC_69, feed_dict={X: X_tst,
+                                                      Y_69: t_tst})
+                    print 'Test accuracy: {}'.format(acc)
+
+                    # Add accuracy to our log
+                    test_acc_mat_pt_finetune[pi, r, tst_ctr] = acc
+                    tst_ctr += 1
 
     # Close session because we are going to modify the network
     sess.close()
@@ -300,16 +372,18 @@ def main():
     # Dropout from the conv features
     fc_reshape_DO = tf.nn.dropout(fc_reshape, keep_prob=0.5)
 
+    l_fc_rs = tf.nn.relu(tf.matmul(fc_reshape_DO, w_fc_69) + b_fc_69)
+
+    fc_rs_DO = tf.nn.dropout(l_fc_rs, keep_prob=0.5)
+
     # Add dropout to the 69 fc layer
-    l_fc_69 = tf.nn.relu(tf.matmul(fc_reshape_DO, w_fc_69) + b_fc_69)
-    l_fc_69 = tf.nn.dropout(l_fc_69, keep_prob=0.5)
+    l_fc_69 = tf.matmul(fc_rs_DO, w_fc_69) + b_fc_69
 
     CE_69 = tf.reduce_mean(
         tf.nn.softmax_cross_entropy_with_logits(l_fc_69, Y_69))
 
-
     # 4) Train network on 69 with conv layers from 05 without freezing n times
-    TL_69_optim_finetune = tf.train.AdamOptimizer(0.001).minimize(CE_69)
+    TL_69_optim_DO = tf.train.AdamOptimizer(0.001).minimize(CE_69)
 
     # Make new session
     sess = tf.Session()
@@ -339,7 +413,7 @@ def main():
             for i in range(n_iters + 1):
                 batch = getMNISTbatch(X_data, Y_data, batchSize)
 
-                sess.run(TL_69_optim_finetune, feed_dict={X: batch[0], Y_69: batch[1]})
+                sess.run(TL_69_optim_DO, feed_dict={X: batch[0], Y_69: batch[1]})
 
                 # Perform test accuracy
                 if i > 0 and (i % every_n_iters == 0):
@@ -364,6 +438,10 @@ def main():
 
     # Plot the 69 training with pretrained layers
     plot_acc_matrix(test_acc_mat_pt, "69 training with pretraining")
+
+    # Plot the 69 training with pretrained layers (FINETUNED)
+    plot_acc_matrix(test_acc_mat_pt_finetune, "69 training with pretraining ("
+                                              "Finetuned)")
 
     # Plot the 69 raw training with dropout
     plot_acc_matrix(test_acc_mat_do, "Raw 69 training with dropout")
