@@ -3,6 +3,16 @@ import numpy as np
 
 
 def makeData(PATH):
+    """
+
+    Parameters
+    ----------
+    PATH: str, path to .mat file
+
+    Returns [dict,dict], with keys 'X','Y','img'
+    -------
+
+    """
     mat_data = loadmat(PATH)
     TrnData = mat_data['TrnData']
     TstData = mat_data['TstData']
@@ -18,10 +28,6 @@ def makeData(PATH):
         TstDataDict[v] = TstData[v][0].T
 
     return [TrnDataDict,TstDataDict]
-
-
-def train_charwise_perceptron(data):
-    pass
 
 
 def main():
