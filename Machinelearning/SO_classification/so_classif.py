@@ -44,10 +44,11 @@ def main():
 
     # Make perceptron which classifies individual letters
     cl_perc_unary = CharWisePerceptron(n_features, n_classes)
-    cl_perc_unary.fit(TrnDataDict['X'], TrnDataDict['Y'], 10000)
-    err = cl_perc_unary.evaluate(TstDataDict['X'], TstDataDict['Y'])
+    cl_perc_unary.fit(TrnDataDict['X'], TrnDataDict['Y'], 1000)
+    errors = cl_perc_unary.evaluate(TstDataDict['X'], TstDataDict['Y'])
 
-    print 'Single char error on charwise perceptron: {}'.format(err)
+    print 'Charwise perceptron evaluation: S_acc: {}, C_acc: {}'.format(
+        errors[0],errors[1])
 
 
 
