@@ -1,6 +1,6 @@
 from scipy.io import loadmat
 import numpy as np
-
+from perceptrons import *
 
 def makeData(PATH):
     """
@@ -39,6 +39,15 @@ def main():
     # Get data in a proper format
     TrnDataDict, TstDataDict = makeData(MAT_DATA_PATH)
 
+    n_classes = 26
+    n_features = TrnDataDict['X'][0].shape[0]
+
+    # Make perceptron which classifies individual letters
+    cl_perc_unary = CharWisePerceptron(n_features, n_classes)
+    cl_perc_unary.fit(TrnDataDict['X'], TrnDataDict['Y'], 10000)
+    err = cl_perc_unary.evaluate(TstDataDict['X'], TstDataDict['Y'])
+
+    print 'Single char error on charwise perceptron: {}'.format(err)
 
 
 

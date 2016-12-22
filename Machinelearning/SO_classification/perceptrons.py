@@ -1,5 +1,7 @@
 import numpy as np
 
+def lettertonum(s):
+    return int([str(ord(c)&31) for c in s][0]) - 1
 
 class CharWisePerceptron:
 
@@ -19,6 +21,9 @@ class CharWisePerceptron:
             if iter_ctr >= maxiters:
                 print "Reached maximum allowed iterations without convergence"
 
+            print "Training charwise perceptron, iter: {}/{}".format(
+                iter_ctr,maxiters)
+
             bad_example = False
 
             # Go over all examples here and look for misclassified example
@@ -36,7 +41,7 @@ class CharWisePerceptron:
                     y_hat = np.argmax(predictions)
 
                     # True label
-                    y_gt = Y[i][j]
+                    y_gt = lettertonum(Y[i][0][j])
 
                     # Missclassified
                     if y_hat != y_gt:
@@ -51,14 +56,21 @@ class CharWisePerceptron:
             if not bad_example:
                 break
 
+        print "Charwise perceptron converged to zero training error after {} " \
+              "iterations".format(iter_ctr)
+
 
     def evaluate(self, X, Y):
 
+        n_sequences = len(X)
         n_examples = 0
-        n_wrong = 0
+        n_chars_wrong = 0
+        n_seq_wrong = 0
 
         # Go over all examples here and evaluate
         for i in range(len(X)):
+
+            marked_seq = False
 
             for j in range(X[i].shape[1]):
 
@@ -74,10 +86,15 @@ class CharWisePerceptron:
                 y_hat = np.argmax(predictions)
 
                 # True label
-                y_gt = Y[i][j]
+                y_gt = lettertonum(Y[i][0][j])
 
                 # Missclassified
                 if y_hat != y_gt:
-                    n_wrong += 1
+                    n_chars_wrong += 1
 
-        return (n_examples - n_wrong)/float(n_examples)
+                    if not marked_seq:
+                        marked_seq = True
+                        n_seq_wrong += 1
+
+        return [(n_sequences - n_seq_wrong)/n_sequences
+            ,(n_examples - n_chars_wrong)/float(n_examples)]
