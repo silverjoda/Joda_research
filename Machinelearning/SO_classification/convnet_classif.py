@@ -34,7 +34,8 @@ def trainandEvalCharwiseConvnet(m, n, n_classes, TrnDataDict, TstDataDict):
 
     # Make Convnet classifier which classifies individual letters
     cl_conv = CharWiseConvnet(m, n, n_classes)
-    cl_conv.fit(TrnDataDict['img'], TrnDataDict['Y'])
+    cl_conv.fit(TrnDataDict['img'], TrnDataDict['Y'],
+                TstDataDict['img'], TstDataDict['Y'])
 
     return cl_conv
 

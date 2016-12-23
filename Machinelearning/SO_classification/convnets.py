@@ -45,27 +45,32 @@ class CharWiseConvnet:
         onehotlab[label] = 1
         return onehotlab
 
-    def fit(self, images, Y):
-
+    def makedata(self, images, labels):
         img_list = []
         label_list = []
 
-        for ims, labs in zip(images, Y):
+        for ims, labs in zip(images, labels):
             for i in range(len(labs[0])):
-
-                c_img = ims[:, self.n*i:self.n*(i + 1)]
+                c_img = ims[:, self.n * i:self.n * (i + 1)]
                 c_lab = self.onehot(lettertonum(labs[0][i]))
 
-                img_list.append(c_img)
+                img_list.append(np.expand_dims(c_img, 2))
                 label_list.append(c_lab)
 
+        X = np.array(img_list)
+        Y = np.array(label_list)
 
+        return X, Y
 
+    def fit(self, images_trn, Y_trn, images_tst, Y_tst):
 
+        # Turn data into proper format
+        self.X_trn, self.Y_trn = self.makedata(images_trn, Y_trn)
+        self.X_tst, self.Y_tst = self.makedata(images_tst, Y_tst)
 
-        # self.model.fit({'input': X}, {'target': Y}, n_epoch=20,
-        #           validation_set=({'input': testX}, {'target': testY}),
-        #           snapshot_step=100, show_metric=True, run_id='convnet_mnist')
+        self.model.fit({'input': self.X_trn}, {'target': self.Y_trn},n_epoch=20,
+                  validation_set=({'input': self.X_tst}, {'target': self.Y_tst}),
+                  snapshot_step=100, show_metric=True, run_id='convnet_mnist')
 
     def predict(self, image):
         # Prepare batch and channel dimensions for tensorflow
