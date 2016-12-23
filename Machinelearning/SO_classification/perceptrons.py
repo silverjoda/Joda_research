@@ -387,3 +387,138 @@ class SeqPerceptron:
         return [(n_sequences - n_seq_wrong) / float(n_sequences)
             , (n_examples - n_chars_wrong) / float(n_examples)]
 
+class KNN:
+    def __init__(self, feat_size, n_classes, X, Y):
+        self.feat_size = feat_size
+        self.n_classes = n_classes
+
+    def predict(self, X):
+        # Length of training example
+        seq_len = X.shape[1]
+
+        # Keep array of sequence scores
+        max_seq_arg = [i for i, x in enumerate(ALL_NAMES) if len(x) ==
+                       seq_len][0]
+        max_score = 0
+
+        for si, s in enumerate(ALL_NAMES):
+            if len(s) != seq_len:
+                continue
+
+            cur_score = 0
+
+            for j in range(seq_len):
+                # Feature vector x
+                x = X[:, j]
+
+                # Dot with all parameter vectors
+                cur_score += self.w[lettertonum(s[j])].dot(x) + \
+                             self.b[lettertonum(s[j])]
+
+            # Add sequence score
+            cur_score += self.v[si]
+
+            if cur_score > max_score:
+                max_score = cur_score
+                max_seq_arg = si
+
+        # Get predicted sequence
+        return ALL_NAMES[max_seq_arg]
+
+    def fit(self, X, Y, maxiters):
+
+        iter_ctr = 0
+
+        while (True):
+
+            n_missc = 0
+
+            iter_ctr += 1
+            if iter_ctr >= maxiters:
+                print "Reached maximum allowed iterations without convergence"
+
+            print "Training Sequence perceptron, iter: {}/{}".format(
+                iter_ctr, maxiters)
+
+            bad_example = False
+
+            # Go over all examples here and look for misclassified example
+            for i in range(len(X)):
+
+                # Make prediction for the current example
+                pred_seq = self.predict(X[i])
+
+                assert len(pred_seq) == X[i].shape[1]
+
+                # True label
+                y_gt_seq = Y[i][0]
+
+                if pred_seq != y_gt_seq:
+                    self.v[ALL_NAMES.index(pred_seq)] -= 1
+                    self.v[ALL_NAMES.index(y_gt_seq)] += 1
+
+                # Perform update on predicted sequence
+                for j in range(len(pred_seq)):
+                    # Feature vector x
+                    x = X[i][:, j]
+
+                    pred_c = lettertonum(pred_seq[j])
+                    y_gt_c = lettertonum(y_gt_seq[j])
+
+                    # Missclassified
+                    if pred_c != y_gt_c:
+                        n_missc += 1
+                        bad_example = True
+
+                        # Perform perceptron update
+                        self.w[y_gt_c] += x
+                        self.w[pred_c] -= x
+                        self.b[y_gt_c] += 1
+                        self.b[pred_c] -= 1
+
+            if not bad_example:
+                break
+
+            print n_missc
+
+        print "Sequence perceptron converged to zero training error after {} " \
+              "iterations".format(iter_ctr)
+
+    def evaluate(self, X, Y):
+        n_sequences = len(X)
+        n_examples = 0
+        n_chars_wrong = 0
+        n_seq_wrong = 0
+
+        # Go over all examples here and evaluate
+        for i in range(len(X)):
+
+            seq_len = X[i].shape[1]
+
+            marked_seq = False
+
+            pred_seq = self.predict(X[i])
+
+            # JIC
+            assert seq_len == len(pred_seq)
+
+            for j in range(seq_len):
+
+                n_examples += 1
+
+                # Predicted y (one with the max score)
+                y_hat = lettertonum(pred_seq[j])
+
+                # True label
+                y_gt = lettertonum(Y[i][0][j])
+
+                # Missclassified
+                if y_hat != y_gt:
+                    n_chars_wrong += 1
+
+                    if not marked_seq:
+                        marked_seq = True
+                        n_seq_wrong += 1
+
+        return [(n_sequences - n_seq_wrong) / float(n_sequences)
+            , (n_examples - n_chars_wrong) / float(n_examples)]

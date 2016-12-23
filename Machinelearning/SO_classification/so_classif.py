@@ -1,6 +1,7 @@
 from scipy.io import loadmat
 import numpy as np
 from perceptrons import *
+from sklearn.neighbors import NearestNeighbors
 
 def makeData(PATH):
     """
@@ -28,6 +29,14 @@ def makeData(PATH):
         TstDataDict[v] = TstData[v][0].T
 
     return [TrnDataDict,TstDataDict]
+
+def makeConvData(PATH):
+    dict = np.load(PATH).item()
+
+    TrnDataDict = dict['trn']
+    TstDataDict = dict['tst']
+
+    return TrnDataDict, TstDataDict
 
 def trainandEvalTask1(n_features, n_classes, TrnDataDict, TstDataDict):
     # Make perceptron which classifies individual letters
@@ -69,6 +78,18 @@ def trainandEvalTask3(n_features, n_classes, TrnDataDict, TstDataDict):
 
     return cl_perc_seq_errs
 
+def trainandEvalKNN(n_features, n_classes, TrnDataDict, TstDataDict):
+    # Make perceptron which classifies individual letters
+    cl_knn = KNN(n_features, n_classes)
+    cl_knn.fit(TrnDataDict['X'], TrnDataDict['Y'], 1000)
+
+    cl_knn_errs = cl_knn.evaluate(TstDataDict['X'], TstDataDict[
+        'Y'])
+
+    print 'KNN with conv features evaluation: S_acc: {}, C_acc: {}'.format(
+        cl_knn_errs[0], cl_knn_errs[1])
+
+    return cl_knn_errs
 
 def trainandEvalCharwiseConvnet(n_features, n_classes, TrnDataDict, TstDataDict):
     # Make perceptron which classifies individual letters
@@ -90,8 +111,11 @@ def main():
     MAT_DATA_PATH = '/home/shagas/Data/SW/Joda_research/Machinelearning/' \
                     'SO_classification/data/matlab/ocr_names.mat'
 
+    CONV_DATA_PATH = 'convfeatures.npy'
+
     # Get data in a proper format
     TrnDataDict, TstDataDict = makeData(MAT_DATA_PATH)
+    #TrnDataDict, TstDataDict = makeConvData(CONV_DATA_PATH)
 
     # Required parameters
     n_classes = 26
@@ -99,8 +123,10 @@ def main():
 
     # Peceptrons
     #trainandEvalTask1(n_features, n_classes, TrnDataDict, TstDataDict)
-    trainandEvalTask2(n_features, n_classes, TrnDataDict, TstDataDict)
+    #trainandEvalTask2(n_features, n_classes, TrnDataDict, TstDataDict)
     #trainandEvalTask3(n_features, n_classes, TrnDataDict, TstDataDict)
+
+    #trainandEvalKNN(n_features, n_classes, TrnDataDict, TstDataDict)
 
 
 if __name__ == "__main__":

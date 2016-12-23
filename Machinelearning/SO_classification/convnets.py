@@ -23,8 +23,8 @@ class CharWiseConvnet:
         w_init = tflearn.initializations.xavier(uniform=True, seed=None,
                                        dtype=tf.float32)
 
-        network = input_data(shape=[None, self.m, self.n, 1], name='input')
-        network = conv_2d(network, 32, 3, activation='relu',
+        self.X_in = input_data(shape=[None, self.m, self.n, 1], name='input')
+        network = conv_2d(self.X_in, 32, 3, activation='relu',
                           regularizer="L2", weights_init=w_init)
         network = local_response_normalization(network)
         network = conv_2d(network, 64, 3, activation='relu', regularizer="L2", weights_init=w_init)
@@ -119,15 +119,46 @@ class CharWiseConvnet:
 
     def makedataset(self, X_trn, Y_trn, X_tst, Y_tst):
 
+        TrnDataDict = {'X':[],'Y':[]}
+        TstDataDict = {'X':[],'Y':[]}
+
         # Go over all examples here and evaluate
         for ims, labs in zip(X_trn, Y_trn):
+
+            # Make sequence zeros
+            seq = np.zeros((2048, len(labs[0])))
+
             for i in range(len(labs[0])):
 
                 c_img = ims[:, self.n * i:self.n * (i + 1)]
-                c_img = np.expand_dims(c_img)
-                c_lab = lettertonum(labs[0][i])
+                c_img = np.expand_dims(c_img, 0)
+                c_img = np.expand_dims(c_img, 3)
 
                 features = self.model.session.run(self.conv_feats, feed_dict
-                = {input_data : c_img })
+                = {self.X_in : c_img })
 
+                seq[:, i] = features
 
+            TrnDataDict['X'].append(seq)
+            TrnDataDict['Y'].append(labs)
+
+        # Go over all examples here and evaluate
+        for ims, labs in zip(X_tst, Y_tst):
+
+            # Make sequence zeros
+            seq = np.zeros((2048, len(labs[0])))
+
+            for i in range(len(labs[0])):
+                c_img = ims[:, self.n * i:self.n * (i + 1)]
+                c_img = np.expand_dims(c_img, 0)
+                c_img = np.expand_dims(c_img, 3)
+
+                features = self.model.session.run(self.conv_feats, feed_dict
+                ={self.X_in: c_img})
+
+                seq[:, i] = features
+
+            TstDataDict['X'].append(seq)
+            TstDataDict['Y'].append(labs)
+
+        np.save('convfeatures.npy', {'trn': TrnDataDict, 'tst': TstDataDict})
