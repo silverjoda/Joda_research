@@ -271,7 +271,7 @@ class SeqPerceptron:
 
                 # Dot with all parameter vectors
                 cur_score += self.w[lettertonum(s[j])].dot(x) + \
-                             self.b[j]
+                             self.b[lettertonum(s[j])]
 
             # Add sequence score
             cur_score += self.v[si]
@@ -365,14 +365,11 @@ class SeqPerceptron:
             pred_seq = self.predict(X[i])
 
             # JIC
-            assert len(seq_len) == len(pred_seq)
+            assert seq_len == len(pred_seq)
 
             for j in range(seq_len):
 
                 n_examples += 1
-
-                # Feature vector x
-                x = X[i][:, j]
 
                 # Predicted y (one with the max score)
                 y_hat = lettertonum(pred_seq[j])
@@ -390,3 +387,4 @@ class SeqPerceptron:
 
         return [(n_sequences - n_seq_wrong) / float(n_sequences)
             , (n_examples - n_chars_wrong) / float(n_examples)]
+

@@ -69,6 +69,21 @@ def trainandEvalTask3(n_features, n_classes, TrnDataDict, TstDataDict):
 
     return cl_perc_seq_errs
 
+
+def trainandEvalCharwiseConvnet(n_features, n_classes, TrnDataDict, TstDataDict):
+    # Make perceptron which classifies individual letters
+    cl_net = SeqPerceptron(n_features, n_classes)
+    cl_net.fit(TrnDataDict['X'], TrnDataDict['Y'], 1000)
+
+    cl_perc_seq_errs = cl_net.evaluate(TstDataDict['X'], TstDataDict[
+        'Y'])
+
+    print 'Structured perceptron evaluation: S_acc: {}, C_acc: {}'.format(
+        cl_perc_seq_errs[0], cl_perc_seq_errs[1])
+
+    return cl_perc_seq_errs
+
+
 def main():
 
     # .mat data file path
@@ -82,9 +97,11 @@ def main():
     n_classes = 26
     n_features = TrnDataDict['X'][0].shape[0]
 
+    # Peceptrons
     #trainandEvalTask1(n_features, n_classes, TrnDataDict, TstDataDict)
-    #trainandEvalTask2(n_features, n_classes, TrnDataDict, TstDataDict)
-    trainandEvalTask3(n_features, n_classes, TrnDataDict, TstDataDict)
+    trainandEvalTask2(n_features, n_classes, TrnDataDict, TstDataDict)
+    #trainandEvalTask3(n_features, n_classes, TrnDataDict, TstDataDict)
+
 
 if __name__ == "__main__":
     main()
