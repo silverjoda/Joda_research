@@ -247,7 +247,7 @@ class SeqPerceptron:
         self.n_classes = n_classes
         self.w = np.zeros((self.n_classes, self.feat_size))
         self.b = np.zeros((self.n_classes))
-        self.v = np.zeros((self.n_classes))
+        self.v = np.zeros((len(ALL_NAMES)))
 
 
     def predict(self, X):
@@ -255,7 +255,8 @@ class SeqPerceptron:
         seq_len = X.shape[1]
 
         # Keep array of sequence scores
-        max_seq_arg = 0
+        max_seq_arg = [i for i,x in enumerate(ALL_NAMES) if len(x) ==
+                       seq_len][0]
         max_score = 0
 
         for si, s in enumerate(ALL_NAMES):
@@ -289,6 +290,8 @@ class SeqPerceptron:
 
         while(True):
 
+            n_missc = 0
+
             iter_ctr += 1
             if iter_ctr >= maxiters:
                 print "Reached maximum allowed iterations without convergence"
@@ -304,12 +307,15 @@ class SeqPerceptron:
                 # Make prediction for the current example
                 pred_seq = self.predict(X[i])
 
+                assert len(pred_seq) == X[i].shape[1]
+
                 # True label
                 y_gt_seq = Y[i][0]
 
                 if pred_seq != y_gt_seq:
                     self.v[ALL_NAMES.index(pred_seq)] -= 1
                     self.v[ALL_NAMES.index(y_gt_seq)] += 1
+
 
                 # Perform update on predicted sequence
                 for j in range(len(pred_seq)):
@@ -319,8 +325,10 @@ class SeqPerceptron:
                     pred_c = lettertonum(pred_seq[j])
                     y_gt_c = lettertonum(y_gt_seq[j])
 
+
                     # Missclassified
                     if pred_c != y_gt_c:
+                        n_missc += 1
                         bad_example = True
 
                         # Perform perceptron update
@@ -329,8 +337,11 @@ class SeqPerceptron:
                         self.b[y_gt_c] += 1
                         self.b[pred_c] -= 1
 
+
             if not bad_example:
                 break
+
+            print n_missc
 
 
 
