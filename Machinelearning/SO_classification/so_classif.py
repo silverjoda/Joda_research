@@ -29,6 +29,45 @@ def makeData(PATH):
 
     return [TrnDataDict,TstDataDict]
 
+def trainandEvalTask1(n_features, n_classes, TrnDataDict, TstDataDict):
+    # Make perceptron which classifies individual letters
+    cl_perc_unary = CharWisePerceptron(n_features, n_classes)
+    cl_perc_unary.fit(TrnDataDict['X'], TrnDataDict['Y'], 1000)
+    cl_perc_unary_errs = cl_perc_unary.evaluate(TstDataDict['X'], TstDataDict[
+        'Y'])
+
+    print 'Charwise perceptron evaluation: S_acc: {}, C_acc: {}'.format(
+        cl_perc_unary_errs[0], cl_perc_unary_errs[1])
+
+    return cl_perc_unary_errs
+
+def trainandEvalTask2(n_features, n_classes, TrnDataDict, TstDataDict):
+    # Make perceptron which classifies individual letters
+    cl_perc_struct = StructuredPerceptron(n_features, n_classes)
+    cl_perc_struct.fit(TrnDataDict['X'], TrnDataDict['Y'], 1000)
+
+    exit()
+
+    cl_perc_struct_errs = cl_perc_struct.evaluate(TstDataDict['X'], TstDataDict[
+        'Y'])
+
+    print 'Structured perceptron evaluation: S_acc: {}, C_acc: {}'.format(
+        cl_perc_struct_errs[0], cl_perc_struct_errs[1])
+
+    return cl_perc_struct_errs
+
+def trainandEvalTask3(n_features, n_classes, TrnDataDict, TstDataDict):
+    # Make perceptron which classifies individual letters
+    cl_perc_seq= SeqPerceptron(n_features, n_classes)
+    cl_perc_seq.fit(TrnDataDict['X'], TrnDataDict['Y'], 1000)
+
+    cl_perc_seq_errs = cl_perc_seq.evaluate(TstDataDict['X'], TstDataDict[
+        'Y'])
+
+    print 'Structured perceptron evaluation: S_acc: {}, C_acc: {}'.format(
+        cl_perc_seq_errs[0], cl_perc_seq_errs[1])
+
+    return cl_perc_seq_errs
 
 def main():
 
@@ -39,18 +78,13 @@ def main():
     # Get data in a proper format
     TrnDataDict, TstDataDict = makeData(MAT_DATA_PATH)
 
+    # Required parameters
     n_classes = 26
     n_features = TrnDataDict['X'][0].shape[0]
 
-    # Make perceptron which classifies individual letters
-    cl_perc_unary = CharWisePerceptron(n_features, n_classes)
-    cl_perc_unary.fit(TrnDataDict['X'], TrnDataDict['Y'], 1000)
-    errors = cl_perc_unary.evaluate(TstDataDict['X'], TstDataDict['Y'])
-
-    print 'Charwise perceptron evaluation: S_acc: {}, C_acc: {}'.format(
-        errors[0],errors[1])
-
-
+    #trainandEvalTask1(n_features, n_classes, TrnDataDict, TstDataDict)
+    #trainandEvalTask2(n_features, n_classes, TrnDataDict, TstDataDict)
+    trainandEvalTask3(n_features, n_classes, TrnDataDict, TstDataDict)
 
 if __name__ == "__main__":
     main()

@@ -1,4 +1,9 @@
 import numpy as np
+from copy import deepcopy
+
+ALL_NAMES = ['bo', 'brock', 'clifford', 'cruz', 'devyn', 'drew', 'dwight',
+             'elvis', 'floyd', 'greg', 'hugh', 'jack', 'joseph', 'max',
+             'philip', 'quinn', 'ralph', 'steve', 'tariq', 'ty']
 
 def lettertonum(s):
     return int([str(ord(c)&31) for c in s][0]) - 1
@@ -99,6 +104,7 @@ class CharWisePerceptron:
         return [(n_sequences - n_seq_wrong)/float(n_sequences)
             ,(n_examples - n_chars_wrong)/float(n_examples)]
 
+
 class StructuredPerceptron:
 
     def __init__(self, feat_size, n_classes):
@@ -113,12 +119,13 @@ class StructuredPerceptron:
 
         iter_ctr = 0
 
+
         while(True):
             iter_ctr += 1
             if iter_ctr >= maxiters:
                 print "Reached maximum allowed iterations without convergence"
 
-            print "Training charwise perceptron, iter: {}/{}".format(
+            print "Training Structured perceptron, iter: {}/{}".format(
                 iter_ctr,maxiters)
 
             bad_example = False
@@ -129,19 +136,15 @@ class StructuredPerceptron:
                 # Sequence length
                 seq_len = X[i].shape[1]
 
-                # Allocate error graph (matrix)
-                err_mat = np.zeros((self.n_classes, seq_len))
+                # Unary costs
+                unary_costs = self.w.dot(X[i]) + \
+                              np.tile(self.b,reps=(seq_len, 1)).transpose()
 
-                # First column
-                err_mat[0] = self.w.dot(X[i][:,j]) + self.b
+                # Allocate error graph (matrix)
+                err_mat = deepcopy(unary_costs)
 
                 # Perform prediction using dp
-                for j in range(seq_len):
-                    # Feature vector x
-                    x = X[i][:,j + 1]
-
-                    # Dot with all parameter vectors
-                    unary_cost = self.w.dot(x) + self.b
+                for j in range(seq_len - 1):
 
                     # For every node in the level
                     for m in range(self.n_classes):
@@ -149,17 +152,24 @@ class StructuredPerceptron:
                         for n in range(self.n_classes):
                             pairwise_cost = self.g[m,n]
                             new_cost = err_mat[m, j] + pairwise_cost + \
-                                       unary_cost[n]
+                                       unary_costs[n, j + 1]
                             if err_mat[n, j + 1] < new_cost:
                                 err_mat[n, j + 1] = new_cost
+
 
                 # Predicted sequence labels
                 y_seq_hat = np.argmax(err_mat, axis=0)
 
 
                 for j in range(seq_len):
+                    # Feature vector x
+                    x = X[i][:, j]
+
                     # True label
                     y_gt = lettertonum(Y[i][0][j])
+
+                    if(j < seq_len - 1):
+                        y_gt_p1 = lettertonum(Y[i][0][j + 1])
 
                     # Missclassified
                     if y_seq_hat[j] != y_gt:
@@ -171,10 +181,15 @@ class StructuredPerceptron:
                         self.b[y_gt] += 1
                         self.b[y_seq_hat[j]] -= 1
 
+                        if (j < seq_len - 1):
+                            self.g[y_gt, y_gt_p1] += 1
+                            self.g[y_seq_hat[j], y_seq_hat[j + 1]] -= 1
+
             if not bad_example:
                 break
 
-        print "Charwise perceptron converged to zero training error after {} " \
+
+        print "Structured perceptron converged to zero training error after {} " \
               "iterations".format(iter_ctr)
 
 
@@ -216,3 +231,105 @@ class StructuredPerceptron:
 
         return [(n_sequences - n_seq_wrong)/float(n_sequences)
             ,(n_examples - n_chars_wrong)/float(n_examples)]
+
+
+class SeqPerceptron:
+
+    def __init__(self, feat_size, n_classes):
+        self.feat_size = feat_size
+        self.n_classes = n_classes
+        self.w = np.zeros((self.n_classes, self.feat_size))
+        self.b = np.zeros((self.n_classes))
+        self.v = np.zeros((self.n_classes))
+
+
+    def fit(self, X, Y, maxiters):
+
+        iter_ctr = 0
+
+        while(True):
+
+            iter_ctr += 1
+            if iter_ctr >= maxiters:
+                print "Reached maximum allowed iterations without convergence"
+
+            print "Training Sequence perceptron, iter: {}/{}".format(
+                iter_ctr,maxiters)
+
+            bad_example = False
+
+            # Go over all examples here and look for misclassified example
+            for i in range(len(X)):
+
+                # Make prediction for the current example
+                pred_seq = self.predict(X[i])
+
+                # True label
+                y_gt_seq = Y[i][0]
+
+                if pred_seq != y_gt_seq:
+                    self.v[ALL_NAMES.index(pred_seq)] -= 1
+                    self.v[ALL_NAMES.index(y_gt_seq)] += 1
+
+                # Perform update on predicted sequence
+                for j in range(len(pred_seq)):
+                    # Feature vector x
+                    x = X[:, j]
+
+                    pred_c = lettertonum(pred_seq[j])
+                    y_gt_c = lettertonum(y_gt_seq[j])
+
+                    # Missclassified
+                    if pred_c != y_gt_c:
+                        bad_example = True
+
+                        # Perform perceptron update
+                        self.w[y_gt_c] += x
+                        self.w[pred_c] -= x
+                        self.b[y_gt_c] += 1
+                        self.b[pred_c] -= 1
+
+            if not bad_example:
+                break
+
+
+
+        print "Sequence perceptron converged to zero training error after {} " \
+              "iterations".format(iter_ctr)
+
+    def predict(self, X):
+        # Length of training example
+        seq_len = X.shape[1]
+
+        # Keep array of sequence scores
+        max_seq_arg = 0
+        max_score = 0
+
+        for si, s in enumerate(ALL_NAMES):
+            if si != seq_len:
+                continue
+
+            cur_score = 0
+
+            for j in range(seq_len):
+                # Feature vector x
+                x = X[:, j]
+
+                # Dot with all parameter vectors
+                cur_score += self.w[lettertonum(s[j])].dot(x) + \
+                             self.b[j]
+
+            # Add sequence score
+            cur_score += self.v[si]
+
+            if cur_score > max_score:
+                max_score = cur_score
+                max_seq_arg = si
+
+        # Get predicted sequence
+        return ALL_NAMES[max_seq_arg]
+
+
+
+    def evaluate(self, X, Y):
+        pass
