@@ -147,7 +147,6 @@ class StructuredPerceptron:
 
         iter_ctr = 0
 
-
         while(True):
             iter_ctr += 1
             if iter_ctr >= maxiters:

@@ -1,6 +1,7 @@
 from scipy.io import loadmat
 import numpy as np
 from convnets import *
+import os.path
 
 def makeData(PATH):
     """
@@ -34,8 +35,22 @@ def trainandEvalCharwiseConvnet(m, n, n_classes, TrnDataDict, TstDataDict):
 
     # Make Convnet classifier which classifies individual letters
     cl_conv = CharWiseConvnet(m, n, n_classes)
-    cl_conv.fit(TrnDataDict['img'], TrnDataDict['Y'],
-                TstDataDict['img'], TstDataDict['Y'])
+
+
+    if os.path.isfile('convnet.tfl'):
+        cl_conv.model.load('convnet.tfl')
+        print 'Loaded pretrained model. '
+    else:
+        print "Training model: "
+        cl_conv.fit(TrnDataDict['img'], TrnDataDict['Y'],
+                    TstDataDict['img'], TstDataDict['Y'])
+
+
+
+    char_conv_errors = cl_conv.evaluate(TstDataDict['img'], TstDataDict['Y'])
+
+    print 'Conv net charwise evaluation: S_acc: {}, C_acc: {}'.format(
+        char_conv_errors[0], char_conv_errors[1])
 
     return cl_conv
 
@@ -53,9 +68,14 @@ def main():
     m = 16
     n = 8
 
-
     # Convnet
-    trainandEvalCharwiseConvnet(m, n, n_classes, TrnDataDict, TstDataDict)
+    cl_conv = trainandEvalCharwiseConvnet(m, n, n_classes, TrnDataDict,
+                                        TstDataDict)
+
+
+    cl_conv.makedataset(TrnDataDict['img'], TrnDataDict['Y'],
+                        TstDataDict['img'], TstDataDict['Y'])
+
 
 if __name__ == "__main__":
     main()
