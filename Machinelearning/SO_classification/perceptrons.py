@@ -127,30 +127,48 @@ class StructuredPerceptron:
         unary_costs = self.w.dot(X) + \
                       np.tile(self.b, reps=(seq_len, 1)).transpose()
 
-        # Allocate error graph (matrix)
-        err_mat = deepcopy(unary_costs)
+        # Allocate cost graph (matrix)
+        cost_mat = deepcopy(unary_costs)
+
+        # Empty string matrix
+        seq_mat = np.empty((self.n_classes, seq_len), dtype=object)
+
+        for i in range(self.n_classes):
+            for j in range(seq_len):
+                seq_mat[i,j] = [0]
+
+        for i in range(self.n_classes):
+            seq_mat[i,0] = [i]
 
         # Perform prediction using dp
         for j in range(seq_len - 1):
-
             # For every node in the level
             for m in range(self.n_classes):
                 # For every adjacent node to current node
                 for n in range(self.n_classes):
-                    new_cost = err_mat[m, j] + self.g[m, n] + \
+                    new_cost = cost_mat[m, j] + self.g[m, n] + \
                                unary_costs[n, j + 1]
-                    if err_mat[n, j + 1] < new_cost:
-                        err_mat[n, j + 1] = new_cost
+                    if cost_mat[n, j + 1] < new_cost:
+                        cost_mat[n, j + 1] = new_cost
+                        seq_mat[n, j + 1] = deepcopy(seq_mat[m,j] + [n])
+
+        # Get final sequence from list node
+        final_seq = seq_mat[np.argmax(cost_mat[:,seq_len - 1])]
+
+        # Flatten into list
+        final_seq = [item for sublist in final_seq for item in sublist]
 
         # Predicted sequence labels
-        return np.argmax(err_mat, axis=0)
+        return final_seq
 
 
     def fit(self, X, Y, maxiters):
 
         iter_ctr = 0
 
+
         while(True):
+            n_missc = 0
             iter_ctr += 1
             if iter_ctr >= maxiters:
                 print "Reached maximum allowed iterations without convergence"
@@ -178,6 +196,7 @@ class StructuredPerceptron:
 
                     # Missclassified
                     if y_seq_hat[j] != y_gt:
+                        n_missc += 1
                         bad_example = True
 
                         # Perform perceptron update
@@ -186,12 +205,14 @@ class StructuredPerceptron:
                         self.b[y_gt] += 1
                         self.b[y_seq_hat[j]] -= 1
 
-                        if (j < seq_len - 1):
+                        if j < (seq_len - 1):
                             self.g[y_gt, lettertonum(Y[i][0][j + 1])] += 1
                             self.g[y_seq_hat[j], y_seq_hat[j + 1]] -= 1
 
             if not bad_example:
                 break
+
+            print n_missc
 
 
         print "Structured perceptron converged to zero training error after {} " \
