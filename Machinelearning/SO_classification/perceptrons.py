@@ -153,11 +153,9 @@ class StructuredPerceptron:
                         cost_mat[n, j + 1] = new_cost
                         seq_mat[n, j + 1] = deepcopy(seq_mat[m,j] + [n])
 
-        # Get final sequence from list node
-        final_seq = seq_mat[np.argmax(cost_mat[:, -1]), -1]
 
         # Predicted sequence labels
-        return final_seq
+        return seq_mat[np.argmax(cost_mat[:, -1]), -1]
 
 
     def fit(self, X, Y, maxiters):
@@ -166,7 +164,7 @@ class StructuredPerceptron:
 
 
         while(True):
-            n_missc = 0
+
             iter_ctr += 1
             if iter_ctr >= maxiters:
                 print "Reached maximum allowed iterations without convergence"
@@ -194,7 +192,6 @@ class StructuredPerceptron:
 
                     # Missclassified
                     if y_seq_hat[j] != y_gt:
-                        n_missc += 1
                         bad_example = True
 
                         # Perform perceptron update
@@ -209,8 +206,6 @@ class StructuredPerceptron:
 
             if not bad_example:
                 break
-
-            print n_missc
 
 
         print "Structured perceptron converged to zero training error after {} " \
@@ -227,20 +222,20 @@ class StructuredPerceptron:
         # Go over all examples here and evaluate
         for i in range(len(X)):
 
+            # Length of word
+            seq_len = (X[i].shape[1])
+
+            # Make sequence prediction
+            pred_seq = self.predict(X[i])
+
             marked_seq = False
 
-            for j in range(X[i].shape[1]):
+            for j in range(seq_len):
 
                 n_examples += 1
 
-                # Feature vector x
-                x = X[i][:, j]
-
-                # Dot with all parameter vectors
-                predictions = self.w.dot(x) + self.b
-
                 # Predicted y (one with the max score)
-                y_hat = np.argmax(predictions)
+                y_hat = pred_seq[j]
 
                 # True label
                 y_gt = lettertonum(Y[i][0][j])
