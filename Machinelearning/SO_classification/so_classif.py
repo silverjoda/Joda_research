@@ -55,8 +55,6 @@ def trainandEvalTask2(n_features, n_classes, TrnDataDict, TstDataDict):
     cl_perc_struct = StructuredPerceptron(n_features, n_classes)
     cl_perc_struct.fit(TrnDataDict['X'], TrnDataDict['Y'], 1000)
 
-    exit()
-
     cl_perc_struct_errs = cl_perc_struct.evaluate(TstDataDict['X'], TstDataDict[
         'Y'])
 
@@ -114,8 +112,8 @@ def main():
     CONV_DATA_PATH = 'convfeatures.npy'
 
     # Get data in a proper format
-    #TrnDataDict, TstDataDict = makeData(MAT_DATA_PATH)
-    TrnDataDict, TstDataDict = makeConvData(CONV_DATA_PATH)
+    TrnDataDict, TstDataDict = makeData(MAT_DATA_PATH)
+    #TrnDataDict, TstDataDict = makeConvData(CONV_DATA_PATH)
 
     # Required parameters
     n_classes = 26
@@ -123,10 +121,10 @@ def main():
 
     # Peceptrons
     #trainandEvalTask1(n_features, n_classes, TrnDataDict, TstDataDict)
-    #trainandEvalTask2(n_features, n_classes, TrnDataDict, TstDataDict)
+    trainandEvalTask2(n_features, n_classes, TrnDataDict, TstDataDict)
     #trainandEvalTask3(n_features, n_classes, TrnDataDict, TstDataDict)
 
-    trainandEvalKNN(n_features, n_classes, TrnDataDict, TstDataDict)
+    #trainandEvalKNN(n_features, n_classes, TrnDataDict, TstDataDict)
 
 
 if __name__ == "__main__":

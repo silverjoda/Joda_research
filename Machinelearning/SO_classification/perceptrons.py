@@ -137,8 +137,7 @@ class StructuredPerceptron:
             for m in range(self.n_classes):
                 # For every adjacent node to current node
                 for n in range(self.n_classes):
-                    pairwise_cost = self.g[m, n]
-                    new_cost = err_mat[m, j] + pairwise_cost + \
+                    new_cost = err_mat[m, j] + self.g[m, n] + \
                                unary_costs[n, j + 1]
                     if err_mat[n, j + 1] < new_cost:
                         err_mat[n, j + 1] = new_cost
@@ -170,16 +169,12 @@ class StructuredPerceptron:
                 # Predicted sequence labels using DP
                 y_seq_hat = self.predict(X[i])
 
-
                 for j in range(seq_len):
                     # Feature vector x
                     x = X[i][:, j]
 
                     # True label
                     y_gt = lettertonum(Y[i][0][j])
-
-                    if(j < seq_len - 1):
-                        y_gt_p1 = lettertonum(Y[i][0][j + 1])
 
                     # Missclassified
                     if y_seq_hat[j] != y_gt:
@@ -192,7 +187,7 @@ class StructuredPerceptron:
                         self.b[y_seq_hat[j]] -= 1
 
                         if (j < seq_len - 1):
-                            self.g[y_gt, y_gt_p1] += 1
+                            self.g[y_gt, lettertonum(Y[i][0][j + 1])] += 1
                             self.g[y_seq_hat[j], y_seq_hat[j + 1]] -= 1
 
             if not bad_example:
