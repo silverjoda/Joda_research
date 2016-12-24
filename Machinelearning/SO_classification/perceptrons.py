@@ -140,6 +140,7 @@ class StructuredPerceptron:
         for i in range(self.n_classes):
             seq_mat[i,0] = [i]
 
+
         # Perform prediction using dp
         for j in range(seq_len - 1):
             # For every node in the level
@@ -148,15 +149,12 @@ class StructuredPerceptron:
                 for n in range(self.n_classes):
                     new_cost = cost_mat[m, j] + self.g[m, n] + \
                                unary_costs[n, j + 1]
-                    if cost_mat[n, j + 1] < new_cost:
+                    if cost_mat[n, j + 1] <= new_cost:
                         cost_mat[n, j + 1] = new_cost
                         seq_mat[n, j + 1] = deepcopy(seq_mat[m,j] + [n])
 
         # Get final sequence from list node
-        final_seq = seq_mat[np.argmax(cost_mat[:,seq_len - 1])]
-
-        # Flatten into list
-        final_seq = [item for sublist in final_seq for item in sublist]
+        final_seq = seq_mat[np.argmax(cost_mat[:, -1]), -1]
 
         # Predicted sequence labels
         return final_seq
