@@ -1,9 +1,13 @@
 import numpy as np
 from copy import deepcopy
+#from sklearn.neighbors import NearestNeighbors
+from sklearn.neighbors import KNeighborsClassifier
 
 ALL_NAMES = ['bo', 'brock', 'clifford', 'cruz', 'devyn', 'drew', 'dwight',
              'elvis', 'floyd', 'greg', 'hugh', 'jack', 'joseph', 'max',
              'philip', 'quinn', 'ralph', 'steve', 'tariq', 'ty']
+
+
 
 def lettertonum(s):
     return int([str(ord(c)&31) for c in s][0]) - 1
@@ -388,103 +392,69 @@ class SeqPerceptron:
             , (n_examples - n_chars_wrong) / float(n_examples)]
 
 class KNN:
-    def __init__(self, feat_size, n_classes, X, Y):
+    def __init__(self, feat_size, n_classes):
         self.feat_size = feat_size
         self.n_classes = n_classes
 
+        self.name_lens = np.array([2,4,5,6])
+
+        # Knn list for different lengths
+        self.knn_list = []
+
+        for n in self.name_lens:
+            self.knn_list.append(KNeighborsClassifier(n_neighbors=7,
+                                                     algorithm='kd_tree',
+                                                      metric='euclidean'))
+
+
     def predict(self, X):
+
         # Length of training example
         seq_len = X.shape[1]
 
-        # Keep array of sequence scores
-        max_seq_arg = [i for i, x in enumerate(ALL_NAMES) if len(x) ==
-                       seq_len][0]
-        max_score = 0
+        if (seq_len == 3):
+            return [s for s in ALL_NAMES if len(s) == 3][0]
 
-        for si, s in enumerate(ALL_NAMES):
-            if len(s) != seq_len:
+        if (seq_len == 8):
+            return [s for s in ALL_NAMES if len(s) == 8][0]
+
+        knn_cl = self.knn_list[np.argwhere(self.name_lens == seq_len)]
+
+        prediction = knn_cl.predict(X.reshape(np.prod(X.shape)))
+
+        # Return first index (gets rid of the unicode trash)
+        return prediction[0]
+
+    def fit(self, X, Y):
+
+        X_l = [[], [], [], []]
+        Y_l = [[], [], [], []]
+
+        for i in range(len(X)):
+            sample = X[i]
+            label = Y[i]
+            s_l = sample.shape[1]
+
+            if(s_l == 3 or s_l == 8):
                 continue
 
-            cur_score = 0
+            # Append sample to correct list
+            X_l[np.argwhere(self.name_lens == s_l)].append(np.array(
+                sample).reshape(np.prod(sample.shape)))
+            Y_l[np.argwhere(self.name_lens == s_l)].append(np.array(label))
 
-            for j in range(seq_len):
-                # Feature vector x
-                x = X[:, j]
+        # Turn into numpy arrays
+        X_l = [np.array(l) for l in X_l]
+        Y_l = [np.array(l) for l in Y_l]
 
-                # Dot with all parameter vectors
-                cur_score += self.w[lettertonum(s[j])].dot(x) + \
-                             self.b[lettertonum(s[j])]
+        for i,cl in enumerate(self.knn_list):
+            # Fist the classifier
+            cl.fit(X_l[i], Y_l[i])
 
-            # Add sequence score
-            cur_score += self.v[si]
 
-            if cur_score > max_score:
-                max_score = cur_score
-                max_seq_arg = si
-
-        # Get predicted sequence
-        return ALL_NAMES[max_seq_arg]
-
-    def fit(self, X, Y, maxiters):
-
-        iter_ctr = 0
-
-        while (True):
-
-            n_missc = 0
-
-            iter_ctr += 1
-            if iter_ctr >= maxiters:
-                print "Reached maximum allowed iterations without convergence"
-
-            print "Training Sequence perceptron, iter: {}/{}".format(
-                iter_ctr, maxiters)
-
-            bad_example = False
-
-            # Go over all examples here and look for misclassified example
-            for i in range(len(X)):
-
-                # Make prediction for the current example
-                pred_seq = self.predict(X[i])
-
-                assert len(pred_seq) == X[i].shape[1]
-
-                # True label
-                y_gt_seq = Y[i][0]
-
-                if pred_seq != y_gt_seq:
-                    self.v[ALL_NAMES.index(pred_seq)] -= 1
-                    self.v[ALL_NAMES.index(y_gt_seq)] += 1
-
-                # Perform update on predicted sequence
-                for j in range(len(pred_seq)):
-                    # Feature vector x
-                    x = X[i][:, j]
-
-                    pred_c = lettertonum(pred_seq[j])
-                    y_gt_c = lettertonum(y_gt_seq[j])
-
-                    # Missclassified
-                    if pred_c != y_gt_c:
-                        n_missc += 1
-                        bad_example = True
-
-                        # Perform perceptron update
-                        self.w[y_gt_c] += x
-                        self.w[pred_c] -= x
-                        self.b[y_gt_c] += 1
-                        self.b[pred_c] -= 1
-
-            if not bad_example:
-                break
-
-            print n_missc
-
-        print "Sequence perceptron converged to zero training error after {} " \
-              "iterations".format(iter_ctr)
 
     def evaluate(self, X, Y):
+
         n_sequences = len(X)
         n_examples = 0
         n_chars_wrong = 0

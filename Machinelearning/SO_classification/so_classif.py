@@ -1,7 +1,7 @@
 from scipy.io import loadmat
 import numpy as np
 from perceptrons import *
-from sklearn.neighbors import NearestNeighbors
+
 
 def makeData(PATH):
     """
@@ -81,12 +81,12 @@ def trainandEvalTask3(n_features, n_classes, TrnDataDict, TstDataDict):
 def trainandEvalKNN(n_features, n_classes, TrnDataDict, TstDataDict):
     # Make perceptron which classifies individual letters
     cl_knn = KNN(n_features, n_classes)
-    cl_knn.fit(TrnDataDict['X'], TrnDataDict['Y'], 1000)
+    cl_knn.fit(TrnDataDict['X'], TrnDataDict['Y'])
 
     cl_knn_errs = cl_knn.evaluate(TstDataDict['X'], TstDataDict[
         'Y'])
 
-    print 'KNN with conv features evaluation: S_acc: {}, C_acc: {}'.format(
+    print 'KNN  evaluation: S_acc: {}, C_acc: {}'.format(
         cl_knn_errs[0], cl_knn_errs[1])
 
     return cl_knn_errs
@@ -114,8 +114,8 @@ def main():
     CONV_DATA_PATH = 'convfeatures.npy'
 
     # Get data in a proper format
-    TrnDataDict, TstDataDict = makeData(MAT_DATA_PATH)
-    #TrnDataDict, TstDataDict = makeConvData(CONV_DATA_PATH)
+    #TrnDataDict, TstDataDict = makeData(MAT_DATA_PATH)
+    TrnDataDict, TstDataDict = makeConvData(CONV_DATA_PATH)
 
     # Required parameters
     n_classes = 26
@@ -126,7 +126,7 @@ def main():
     #trainandEvalTask2(n_features, n_classes, TrnDataDict, TstDataDict)
     #trainandEvalTask3(n_features, n_classes, TrnDataDict, TstDataDict)
 
-    #trainandEvalKNN(n_features, n_classes, TrnDataDict, TstDataDict)
+    trainandEvalKNN(n_features, n_classes, TrnDataDict, TstDataDict)
 
 
 if __name__ == "__main__":
