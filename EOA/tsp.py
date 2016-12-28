@@ -6,10 +6,10 @@ from copy import copy
 from copy import deepcopy
 
 # ======== Define simulation parameters
-n_Vertices = 32 # Amount of vertices (only valid if generating random graph)
+n_Vertices = 18 # Amount of vertices (only valid if generating random graph)
 n_ts = 3 # Amount of travelling salesmen
-n_iters = int(1e4) # Amount of iterations (generations) for algorithm
-algorithm = 'evo' # Choose algorithm from {local, evo, meme}
+n_iters = int(1e3) # Amount of iterations (generations) for algorithm
+algorithm = 'local' # Choose algorithm from {local, evo, meme}
 vertex_xy_range = [0,1000] # Range of coordinates that vertices can have
 depot_xy_range = [400,600] # Range of coordinates that depot can have
 n_random_perms = n_Vertices*5 # Amount of random permutations
@@ -18,7 +18,7 @@ path_distance_delta_penalty = 1 # Constant which penalizes the difference
 # between max and min tours
 
 # Evo algorithm parameters
-n_generations = int(1e4) # Amount of times that the algorithm will be run
+n_generations = int(1e3) # Amount of times that the algorithm will be run
 pop_size = 300 # Size of the population
 pop_selection_size = pop_size/7 # Amount of parent individuals selected from
 # population
@@ -30,13 +30,29 @@ def main():
 
     """
 
-    # Generate a random complete undirected graph of n_V vertices
-    # The first vertex is the Depot!
-    G = generate_random_tsp_vertices(n_Vertices)
+    n_iters = 10
+    local_fitness = evo_fitness = meme_fitness = 0
 
-    # Initialize plot
-    plt.axis([0, 1000, 0, 1000])
-    plt.ion()
+    for i in range(n_iters):
+        # Generate a random complete undirected graph of n_V vertices
+        # The first vertex is the Depot!
+        G = generate_random_tsp_vertices(n_Vertices)
+
+        # Initialize plot
+        plt.axis([0, 1000, 0, 1000])
+        plt.ion()
+
+        local_fitness += local_search(G)
+        evo_fitness += evo_search(G)
+        meme_fitness += meme_search(G)
+
+    # Save average performance of algorithms
+    np.save('average_fitnesses',[local_fitness, evo_fitness, meme_fitness])
+
+    print local_fitness, evo_fitness, meme_fitness
+
+    # TODO ,... make progress graphs
+    exit()
 
     # Make a solver object
     if algorithm == 'local':
@@ -101,10 +117,13 @@ def local_search(G_in):
     solution = [G, boundaries]
 
     # Best fitness so far
-    best_fitness = 0
+    best_fitness = 10000000
+
+    progress = []
 
     # Refine G n_iters times using local_search
     for i in xrange(n_iters):
+        iter_fitness = 10000000
 
         # Perform an evaluation of current solution on graph G
         solution_info = evaluate_fitness(solution, depot)
@@ -139,8 +158,8 @@ def local_search(G_in):
             # Evaluate new solution
             fitness = evaluate_fitness(solution, depot)
 
-            if fitness > best_fitness:
-                best_fitness = fitness
+            if fitness < iter_fitness:
+                iter_fitness = fitness
                 best_swap = (rand_v1, rand_v2)
 
             # Swap back
@@ -154,7 +173,10 @@ def local_search(G_in):
             G[best_swap[0]] = G[best_swap[1]]
             G[best_swap[1]] = v_tmp
 
-    plt.pause(5)
+        best_fitness = iter_fitness
+        progress.append(best_fitness)
+
+    return progress
 
 
 def evo_search(G_in):
@@ -176,6 +198,7 @@ def evo_search(G_in):
 
     # Best fitness so far
     best_fitness = 0
+    progress = []
 
     # Generate population
     population = []
@@ -188,12 +211,11 @@ def evo_search(G_in):
         # Add solution to population
         population.append([deepcopy(G), deepcopy(boundaries)])
 
-
     # Run evolutionary update for n_iters generations
     for i in xrange(n_generations):
 
         # Evaluate fitness for each individual in population
-        fitnesses = [evaluate_evo_fitness(p, depot) for p in population]
+        fitnesses = [evaluate_fitness(p, depot) for p in population]
 
 
         # Sort population in descending fitness ***
@@ -212,7 +234,7 @@ def evo_search(G_in):
             print "Generation: {}/{}: Fitness of best: {}, mean: {}, " \
                   "median: {}".format(i,
                                       n_iters,
-                                      evaluate_evo_fitness(population[0], depot),
+                                      evaluate_fitness(population[0], depot),
                                       np.mean(fitnesses),
                                       np.median(fitnesses))
 
@@ -235,16 +257,19 @@ def evo_search(G_in):
             offspring1 = make_new_individual(p1,p2)
             offspring2 = make_new_individual(p2,p2)
 
-            if evaluate_evo_fitness(offspring1, depot) < evaluate_evo_fitness(p1,depot):
+            if evaluate_fitness(offspring1, depot) < evaluate_fitness(p1, depot):
                 population[idx1] = deepcopy(offspring1)
             elif random.random() < mutation_alpha:
                 population[idx1] = deepcopy(offspring1)
 
-            if evaluate_evo_fitness(offspring2, depot) < evaluate_evo_fitness(p2,depot):
+            if evaluate_fitness(offspring2, depot) < evaluate_fitness(p2, depot):
                 population[idx2]= deepcopy(offspring2)
             elif random.random() < mutation_alpha:
                 population[idx2] = deepcopy(offspring2)
 
+        progress.append(evaluate_fitness(population[0], depot))
+
+    return progress
 
 def meme_search(G_in):
     # Deep copy the graph
@@ -265,6 +290,7 @@ def meme_search(G_in):
 
     # Best fitness so far
     best_fitness = 0
+    progress = []
 
     # Generate population
     population = []
@@ -282,7 +308,7 @@ def meme_search(G_in):
     for i in xrange(n_generations):
 
         # Evaluate fitness for each individual in population
-        fitnesses = [evaluate_evo_fitness(p, depot) for p in population]
+        fitnesses = [evaluate_fitness(p, depot) for p in population]
 
 
         # Sort population in descending fitness ***
@@ -302,7 +328,7 @@ def meme_search(G_in):
             print "Generation: {}/{}: Fitness of best: {}, mean: {}, " \
                   "median: {}".format(i,
                                       n_iters,
-                                      evaluate_evo_fitness(population[0], depot),
+                                      evaluate_fitness(population[0], depot),
                                       np.mean(fitnesses),
                                       np.median(fitnesses))
 
@@ -330,16 +356,19 @@ def meme_search(G_in):
             perform_2opt(offspring2, depot)
 
 
-            if evaluate_evo_fitness(offspring1, depot) < evaluate_evo_fitness(p1,depot):
+            if evaluate_fitness(offspring1, depot) < evaluate_fitness(p1, depot):
                 population[idx1] = deepcopy(offspring1)
             elif random.random() < mutation_alpha:
                 population[idx1] = deepcopy(offspring1)
 
-            if evaluate_evo_fitness(offspring2, depot) < evaluate_evo_fitness(p2,depot):
+            if evaluate_fitness(offspring2, depot) < evaluate_fitness(p2, depot):
                 population[idx2]= deepcopy(offspring2)
             elif random.random() < mutation_alpha:
                 population[idx2] = deepcopy(offspring2)
 
+            progress.append(evaluate_fitness(population[0], depot))
+
+    return progress
 
 def perform_2opt(sol, depot):
 
@@ -386,7 +415,8 @@ def perform_2opt(sol, depot):
 
             testIndividual2 = [testseq2, sol[1]]
 
-            if evaluate_fitness(testIndividual1, depot) > evaluate_fitness(
+            if evaluate_fitness(testIndividual1, depot) > \
+                    evaluate_fitness(
                     testIndividual2, depot):
                 sol = testIndividual1
             else:
@@ -476,52 +506,6 @@ def make_new_individual(p1,p2):
 
 
 def evaluate_fitness(solution, depot):
-    """
-    Compute the fitness to solution
-
-    Parameters
-    ----------
-    solution: List of vertices, boundaries
-
-    Returns: float32, fitness value
-    -------
-
-    """
-
-    # Unpack
-    sequence, boundaries = solution
-
-    # Total length of tour(s)
-    tour_lengths = []
-
-    # Augmented boundaries
-    aug_boundaries = boundaries[:]
-    aug_boundaries.insert(0, 0)
-    aug_boundaries.insert(len(aug_boundaries), len(sequence) - 1)
-
-    for n in range(len(aug_boundaries) - 1):
-
-        # Start by taking length from depot to first vertex
-        tour_length = distance(depot, sequence[aug_boundaries[n]])
-
-        # Go over each vertex and increment length
-        for i in range(aug_boundaries[n], aug_boundaries[n + 1]):
-            tour_length += distance(sequence[i], sequence[i + 1])
-
-        # Add distance from last vertex to depot
-        tour_length += distance(sequence[aug_boundaries[n + 1]], depot)
-
-        # Add to total tour length
-        tour_lengths.append(tour_length)
-
-    # Part of the fitness is the total length
-    total_tour_length = sum(tour_lengths)
-
-
-    return 1000/(total_tour_length)
-
-
-def evaluate_evo_fitness(solution, depot):
     """
     Compute the fitness to solution
 
