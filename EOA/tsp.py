@@ -9,7 +9,7 @@ from copy import deepcopy
 n_Vertices = 32 # Amount of vertices (only valid if generating random graph)
 n_ts = 3 # Amount of travelling salesmen
 n_iters = int(1e4) # Amount of iterations (generations) for algorithm
-algorithm = 'meme' # Choose algorithm from {local, evo, meme}
+algorithm = 'evo' # Choose algorithm from {local, evo, meme}
 vertex_xy_range = [0,1000] # Range of coordinates that vertices can have
 depot_xy_range = [400,600] # Range of coordinates that depot can have
 n_random_perms = n_Vertices*5 # Amount of random permutations
@@ -45,8 +45,6 @@ def main():
         evo_search(G)
     elif algorithm == 'meme':
         meme_search(G)
-    elif algorithm == 'supermeme':
-        supermeme_search(G)
     else:
         print 'Error, algorithm not found, exiting simulation. '
         exit()
@@ -105,7 +103,6 @@ def local_search(G_in):
     # Best fitness so far
     best_fitness = 0
 
-
     # Refine G n_iters times using local_search
     for i in xrange(n_iters):
 
@@ -125,8 +122,6 @@ def local_search(G_in):
         # Keep tabs of the best swap
         best_swap = None
 
-        best_iteration_fitness = 0
-
         for n in xrange(n_random_perms):
 
             # SWAP VERTICES ==========================
@@ -144,8 +139,8 @@ def local_search(G_in):
             # Evaluate new solution
             fitness = evaluate_fitness(solution, depot)
 
-            if fitness > best_iteration_fitness:
-                best_iteration_fitness = fitness
+            if fitness > best_fitness:
+                best_fitness = fitness
                 best_swap = (rand_v1, rand_v2)
 
             # Swap back
@@ -153,17 +148,11 @@ def local_search(G_in):
             G[rand_v2] = G[rand_v1]
             G[rand_v1] = v_tmp
 
-            #boundaries[rand_b] -= rand_swap_dir
-
-
         if best_swap is not None:
             # Swap the best greedy solution
             v_tmp = G[best_swap[0]]
             G[best_swap[0]] = G[best_swap[1]]
             G[best_swap[1]] = v_tmp
-            #boundaries[best_swap[2]] += best_swap[3]
-
-
 
     plt.pause(5)
 
@@ -204,7 +193,7 @@ def evo_search(G_in):
     for i in xrange(n_generations):
 
         # Evaluate fitness for each individual in population
-        fitnesses = [evaluate_fitness(p, depot) for p in population]
+        fitnesses = [evaluate_evo_fitness(p, depot) for p in population]
 
 
         # Sort population in descending fitness ***
@@ -223,7 +212,7 @@ def evo_search(G_in):
             print "Generation: {}/{}: Fitness of best: {}, mean: {}, " \
                   "median: {}".format(i,
                                       n_iters,
-                                      evaluate_fitness(population[0], depot),
+                                      evaluate_evo_fitness(population[0], depot),
                                       np.mean(fitnesses),
                                       np.median(fitnesses))
 
@@ -246,12 +235,12 @@ def evo_search(G_in):
             offspring1 = make_new_individual(p1,p2)
             offspring2 = make_new_individual(p2,p2)
 
-            if evaluate_fitness(offspring1, depot) < evaluate_fitness(p1,depot):
+            if evaluate_evo_fitness(offspring1, depot) < evaluate_evo_fitness(p1,depot):
                 population[idx1] = deepcopy(offspring1)
             elif random.random() < mutation_alpha:
                 population[idx1] = deepcopy(offspring1)
 
-            if evaluate_fitness(offspring2, depot) < evaluate_fitness(p2,depot):
+            if evaluate_evo_fitness(offspring2, depot) < evaluate_evo_fitness(p2,depot):
                 population[idx2]= deepcopy(offspring2)
             elif random.random() < mutation_alpha:
                 population[idx2] = deepcopy(offspring2)
@@ -293,7 +282,7 @@ def meme_search(G_in):
     for i in xrange(n_generations):
 
         # Evaluate fitness for each individual in population
-        fitnesses = [evaluate_fitness(p, depot) for p in population]
+        fitnesses = [evaluate_evo_fitness(p, depot) for p in population]
 
 
         # Sort population in descending fitness ***
@@ -313,7 +302,7 @@ def meme_search(G_in):
             print "Generation: {}/{}: Fitness of best: {}, mean: {}, " \
                   "median: {}".format(i,
                                       n_iters,
-                                      evaluate_fitness(population[0], depot),
+                                      evaluate_evo_fitness(population[0], depot),
                                       np.mean(fitnesses),
                                       np.median(fitnesses))
 
@@ -341,153 +330,15 @@ def meme_search(G_in):
             perform_2opt(offspring2, depot)
 
 
-            if evaluate_fitness(offspring1, depot) < evaluate_fitness(p1,depot):
+            if evaluate_evo_fitness(offspring1, depot) < evaluate_evo_fitness(p1,depot):
                 population[idx1] = deepcopy(offspring1)
             elif random.random() < mutation_alpha:
                 population[idx1] = deepcopy(offspring1)
 
-            if evaluate_fitness(offspring2, depot) < evaluate_fitness(p2,depot):
+            if evaluate_evo_fitness(offspring2, depot) < evaluate_evo_fitness(p2,depot):
                 population[idx2]= deepcopy(offspring2)
             elif random.random() < mutation_alpha:
                 population[idx2] = deepcopy(offspring2)
-
-
-def supermeme_search(G_in):
-    # Deep copy the graph
-    G = deepcopy(G_in)
-
-    # First vertex is the depot
-    depot = G[0]
-    del G[0]
-
-    # Length of sequence
-    seq_length = len(G)
-
-    # Shuffle graph
-    random.shuffle(G)
-
-    # Initial boundaries that separate individual agent sequences
-    boundaries = [(seq_length / n_ts) * i for i in xrange(1, n_ts)]
-
-    # Best fitness so far
-    best_fitness = 0
-
-    # Generate population
-    population = []
-
-    for i in range(pop_size):
-
-        # Generate random solution
-        random.shuffle(G)
-
-        # Add solution to population
-        population.append([deepcopy(G), deepcopy(boundaries)])
-
-
-    # Run evolutionary update for n_iters generations
-    for i in xrange(n_generations):
-
-        # Evaluate fitness for each individual in population
-        fitnesses = [evaluate_fitness(p, depot) for p in population]
-
-
-        # Sort population in descending fitness ***
-        population = [P for (F, P) in sorted(zip(fitnesses, population),
-                                             reverse=False,
-                                             key=lambda pair: pair[0])]
-
-        # Sort fitnesses
-        fitnesses.sort(reverse=False)
-
-        if i % (n_iters / 100) == 0:
-            plot_graph(population[0][0], population[0][1], depot)
-            plt.pause(0.1)
-
-        # Print fitness of best individual
-        if i % (n_iters / 100) == 0:
-            print "Generation: {}/{}: Fitness of best: {}, mean: {}, " \
-                  "median: {}".format(i,
-                                      n_iters,
-                                      evaluate_fitness(population[0], depot),
-                                      np.mean(fitnesses),
-                                      np.median(fitnesses))
-
-        # Calculate total fitness
-        total_fitness = sum(fitnesses)
-
-        fit_scaled = np.array(fitnesses)/total_fitness
-
-        # Make 100 new individuals from selected units
-        for j in range(pop_selection_size):
-
-            # Roulette selection
-            idx1 = np.random.choice(len(fitnesses), p=fit_scaled)
-            idx2 = np.random.choice(len(fitnesses), p=fit_scaled)
-
-            p1 = population[idx1]
-            p2 = population[idx2]
-
-            # Make new individuals
-            offspring1 = make_new_individual(p1,p2)
-            offspring2 = make_new_individual(p2,p2)
-
-            if evaluate_fitness(offspring1, depot) < evaluate_fitness(p1,depot):
-                population[idx1] = deepcopy(offspring1)
-            elif random.random() < mutation_alpha:
-                population[idx1] = deepcopy(offspring1)
-
-            if evaluate_fitness(offspring2, depot) < evaluate_fitness(p2,depot):
-                population[idx2]= deepcopy(offspring2)
-            elif random.random() < mutation_alpha:
-                population[idx2] = deepcopy(offspring2)
-
-
-        # Perform Local search step: ===========
-
-        # Keep tabs of the best swap
-        best_swap = None
-
-        best_iteration_fitness = 0
-
-        for p in population:
-
-            # Sequence of individual
-            G = p[0]
-
-            for n in xrange(n_Vertices/5):
-
-                # SWAP VERTICES ==========================
-
-                #  Generate two random numbers
-                rand_v1, rand_v2 = generate_two_unique_random_numbers(0,
-                                                                      seq_length)
-
-                # Swap the corresponding vertices
-                v_tmp = G[rand_v2]
-                G[rand_v2] = G[rand_v1]
-                G[rand_v1] = v_tmp
-
-                # EVALUATE AND UPDATE ====================
-
-                # Evaluate new solution
-                fitness = evaluate_fitness(p, depot)
-
-                if fitness > best_iteration_fitness:
-                    best_iteration_fitness = fitness
-                    best_swap = (rand_v1, rand_v2)
-
-                # Swap back
-                v_tmp = G[rand_v2]
-                G[rand_v2] = G[rand_v1]
-                G[rand_v1] = v_tmp
-
-
-            if best_swap is not None:
-                # Swap the best greedy solution
-                v_tmp = G[best_swap[0]]
-                G[best_swap[0]] = G[best_swap[1]]
-                G[best_swap[1]] = v_tmp
-
 
 
 def perform_2opt(sol, depot):
@@ -547,8 +398,10 @@ def edges_cross(edge1, edge2):
     [C, D] = edge2
     return ccw(A, C, D) != ccw(B, C, D) and ccw(A, B, C) != ccw(A, B, D)
 
+
 def ccw(A, B, C):
     return (C[1] - A[1]) * (B[0] - A[0]) > (B[1] - A[1]) * (C[0] - A[0])
+
 
 def make_new_individual(p1,p2):
 
@@ -664,6 +517,52 @@ def evaluate_fitness(solution, depot):
     # Part of the fitness is the total length
     total_tour_length = sum(tour_lengths)
 
+
+    return 1000/(total_tour_length)
+
+
+def evaluate_evo_fitness(solution, depot):
+    """
+    Compute the fitness to solution
+
+    Parameters
+    ----------
+    solution: List of vertices, boundaries
+
+    Returns: float32, fitness value
+    -------
+
+    """
+
+    # Unpack
+    sequence, boundaries = solution
+
+    # Total length of tour(s)
+    tour_lengths = []
+
+    # Augmented boundaries
+    aug_boundaries = boundaries[:]
+    aug_boundaries.insert(0, 0)
+    aug_boundaries.insert(len(aug_boundaries), len(sequence) - 1)
+
+    for n in range(len(aug_boundaries) - 1):
+
+        # Start by taking length from depot to first vertex
+        tour_length = distance(depot, sequence[aug_boundaries[n]])
+
+        # Go over each vertex and increment length
+        for i in range(aug_boundaries[n], aug_boundaries[n + 1]):
+            tour_length += distance(sequence[i], sequence[i + 1])
+
+        # Add distance from last vertex to depot
+        tour_length += distance(sequence[aug_boundaries[n + 1]], depot)
+
+        # Add to total tour length
+        tour_lengths.append(tour_length)
+
+    # Part of the fitness is the total length
+    total_tour_length = sum(tour_lengths)
+
     # Penalize for the maximum tour length (force all to be equal length)
     max_tourlength_penalty = max(tour_lengths) - min(tour_lengths)
 
@@ -674,7 +573,7 @@ def evaluate_fitness(solution, depot):
     # We want fitness to be lower with higher penalty
     fitness = fitness_scaling_constant*(1/total_penalty)
 
-    return total_penalty
+    return max(tour_lengths)
 
 
 def generate_random_tsp_vertices(m):

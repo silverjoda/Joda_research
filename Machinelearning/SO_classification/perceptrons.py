@@ -40,6 +40,9 @@ class CharWisePerceptron:
 
                 for j in range(X[i].shape[1]):
 
+                    decay_rate = 0.03
+                    alpha = np.exp(-iter_ctr*decay_rate)  #
+
                     # Feature vector x
                     x = X[i][:,j]
 
@@ -194,15 +197,18 @@ class StructuredPerceptron:
                     if y_seq_hat[j] != y_gt:
                         bad_example = True
 
+                        decay_rate = 0.03
+                        alpha = 1# np.exp(-iter_ctr*decay_rate)
+
                         # Perform perceptron update
-                        self.w[y_gt] += x
-                        self.w[y_seq_hat[j]] -= x
-                        self.b[y_gt] += 1
-                        self.b[y_seq_hat[j]] -= 1
+                        self.w[y_gt] += alpha*x
+                        self.w[y_seq_hat[j]] -= alpha*x
+                        self.b[y_gt] += alpha*1
+                        self.b[y_seq_hat[j]] -= alpha*1
 
                         if j < (seq_len - 1):
-                            self.g[y_gt, lettertonum(Y[i][0][j + 1])] += 1
-                            self.g[y_seq_hat[j], y_seq_hat[j + 1]] -= 1
+                            self.g[y_gt, lettertonum(Y[i][0][j + 1])] += alpha*1
+                            self.g[y_seq_hat[j], y_seq_hat[j + 1]] -= alpha*1
 
             if not bad_example:
                 break

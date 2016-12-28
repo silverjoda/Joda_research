@@ -111,7 +111,7 @@ def main():
 
     CONV_DATA_PATH = 'convfeatures.npy'
 
-    # Get data in a proper format
+    # UNCOMMENT FIRST LINE FOR NORMAL FEATURES, SECOND FOR CNN
     TrnDataDict, TstDataDict = makeData(MAT_DATA_PATH)
     #TrnDataDict, TstDataDict = makeConvData(CONV_DATA_PATH)
 
@@ -120,10 +120,11 @@ def main():
     n_features = TrnDataDict['X'][0].shape[0]
 
     # Peceptrons
-    #trainandEvalTask1(n_features, n_classes, TrnDataDict, TstDataDict)
-    trainandEvalTask2(n_features, n_classes, TrnDataDict, TstDataDict)
+    trainandEvalTask1(n_features, n_classes, TrnDataDict, TstDataDict)
+    #trainandEvalTask2(n_features, n_classes, TrnDataDict, TstDataDict)
     #trainandEvalTask3(n_features, n_classes, TrnDataDict, TstDataDict)
 
+    # KNN
     #trainandEvalKNN(n_features, n_classes, TrnDataDict, TstDataDict)
 
 
