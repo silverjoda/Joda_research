@@ -6,10 +6,10 @@ from copy import copy
 from copy import deepcopy
 
 # ======== Define simulation parameters
-n_Vertices = 18 # Amount of vertices (only valid if generating random graph)
-n_ts = 3 # Amount of travelling salesmen
-n_iters = int(1e3) # Amount of iterations (generations) for algorithm
-algorithm = 'local' # Choose algorithm from {local, evo, meme}
+n_Vertices = 36 # Amount of vertices (only valid if generating random graph)
+n_ts = 5 # Amount of travelling salesmen
+n_iters = int(6000) # Amount of iterations (generations) for algorithm
+algorithm = 'evo' # Choose algorithm from {local, evo, meme}
 vertex_xy_range = [0,1000] # Range of coordinates that vertices can have
 depot_xy_range = [400,600] # Range of coordinates that depot can have
 n_random_perms = n_Vertices*5 # Amount of random permutations
@@ -18,11 +18,11 @@ path_distance_delta_penalty = 1 # Constant which penalizes the difference
 # between max and min tours
 
 # Evo algorithm parameters
-n_generations = int(1e3) # Amount of times that the algorithm will be run
+n_generations = int(6000) # Amount of times that the algorithm will be run
 pop_size = 300 # Size of the population
-pop_selection_size = pop_size/7 # Amount of parent individuals selected from
+pop_selection_size = pop_size/6 # Amount of parent individuals selected from
 # population
-mutation_alpha = 0.03  # Chance to mutate
+mutation_alpha = 0.03 # Chance to mutate
 
 def main():
     """
@@ -30,10 +30,10 @@ def main():
 
     """
 
-    n_iters = 10
-    local_fitness = evo_fitness = meme_fitness = 0
+    n_reps = 5
+    fitnesses = np.zeros((3, n_reps, n_iters))
 
-    for i in range(n_iters):
+    for i in range(n_reps):
         # Generate a random complete undirected graph of n_V vertices
         # The first vertex is the Depot!
         G = generate_random_tsp_vertices(n_Vertices)
@@ -42,17 +42,20 @@ def main():
         plt.axis([0, 1000, 0, 1000])
         plt.ion()
 
-        local_fitness += local_search(G)
-        evo_fitness += evo_search(G)
-        meme_fitness += meme_search(G)
+        fitnesses[0, i] = local_search(G)
+        fitnesses[1, i] = evo_search(G)
+        fitnesses[2, i] = meme_search(G)
 
     # Save average performance of algorithms
-    np.save('average_fitnesses',[local_fitness, evo_fitness, meme_fitness])
+    np.save('Progresses.npy', fitnesses)
 
-    print local_fitness, evo_fitness, meme_fitness
-
-    # TODO ,... make progress graphs
     exit()
+
+
+    np.random.seed(0)
+    random.seed(0)
+    G = generate_random_tsp_vertices(n_Vertices)
+
 
     # Make a solver object
     if algorithm == 'local':
@@ -158,8 +161,8 @@ def local_search(G_in):
             # Evaluate new solution
             fitness = evaluate_fitness(solution, depot)
 
-            if fitness < iter_fitness:
-                iter_fitness = fitness
+            if fitness < best_fitness:
+                best_fitness = fitness
                 best_swap = (rand_v1, rand_v2)
 
             # Swap back
@@ -173,7 +176,7 @@ def local_search(G_in):
             G[best_swap[0]] = G[best_swap[1]]
             G[best_swap[1]] = v_tmp
 
-        best_fitness = iter_fitness
+        #best_fitness = iter_fitness
         progress.append(best_fitness)
 
     return progress
@@ -196,8 +199,7 @@ def evo_search(G_in):
     # Initial boundaries that separate individual agent sequences
     boundaries = [(seq_length / n_ts) * i for i in xrange(1, n_ts)]
 
-    # Best fitness so far
-    best_fitness = 0
+    # Opt progress array
     progress = []
 
     # Generate population
@@ -219,11 +221,15 @@ def evo_search(G_in):
 
 
         # Sort population in descending fitness ***
-        population = [P for (F, P) in sorted(zip(fitnesses, population),
+        popfit = [[F, P] for (F, P) in sorted(zip(fitnesses, population),
                                              reverse=False,
                                              key=lambda pair: pair[0])]
+
         # Sort fitnesses
         fitnesses.sort(reverse=False)
+
+        # Progress array
+        progress.append(evaluate_fitness(population[0], depot))
 
         if i % (n_iters / 100) == 0:
             plot_graph(population[0][0], population[0][1], depot)
@@ -255,7 +261,7 @@ def evo_search(G_in):
 
             # Make new individuals
             offspring1 = make_new_individual(p1,p2)
-            offspring2 = make_new_individual(p2,p2)
+            offspring2 = make_new_individual(p1,p2)
 
             if evaluate_fitness(offspring1, depot) < evaluate_fitness(p1, depot):
                 population[idx1] = deepcopy(offspring1)
@@ -267,7 +273,7 @@ def evo_search(G_in):
             elif random.random() < mutation_alpha:
                 population[idx2] = deepcopy(offspring2)
 
-        progress.append(evaluate_fitness(population[0], depot))
+
 
     return progress
 
@@ -319,6 +325,8 @@ def meme_search(G_in):
         # Sort fitnesses
         fitnesses.sort(reverse=False)
 
+        progress.append(evaluate_fitness(population[0], depot))
+
         if i % (n_iters / 100) == 0:
             plot_graph(population[0][0], population[0][1], depot)
             plt.pause(0.1)
@@ -349,11 +357,11 @@ def meme_search(G_in):
 
             # Make new individuals
             offspring1 = make_new_individual(p1,p2)
-            offspring2 = make_new_individual(p2,p2)
+            offspring2 = make_new_individual(p1,p2)
 
             # Perform 2-opt on individuals
-            perform_2opt(offspring1, depot)
-            perform_2opt(offspring2, depot)
+            offspring1 = perform_2opt(offspring1, depot)
+            offspring2 = perform_2opt(offspring2, depot)
 
 
             if evaluate_fitness(offspring1, depot) < evaluate_fitness(p1, depot):
@@ -366,62 +374,62 @@ def meme_search(G_in):
             elif random.random() < mutation_alpha:
                 population[idx2] = deepcopy(offspring2)
 
-            progress.append(evaluate_fitness(population[0], depot))
 
     return progress
 
 def perform_2opt(sol, depot):
 
-    # Get the sequence of nodes
-    seq = sol[0]
+    new_ind = deepcopy(sol)
+
 
     # Go over each node in the solution
     for i in range(n_Vertices):
 
         # Pick random node from the solution
-        rnd_num = random.randint(0, len(seq) - 2)
+        rnd_num = random.randint(0, len(new_ind[0]) - 2)
 
         # Find second suitable edge
         while True:
-            rnd_num_2 = random.randint(0, len(seq) - 2)
+            rnd_num_2 = random.randint(0, len(new_ind[0]) - 2)
             if abs(rnd_num_2 - rnd_num) > 1:
                 break
 
 
         # Edge 1
-        edge_1 = [seq[rnd_num], seq[rnd_num + 1]]
+        edge_1 = [new_ind[0][rnd_num], new_ind[0][rnd_num + 1]]
 
         # Edge 1
-        edge_2 = [seq[rnd_num_2], seq[rnd_num_2 + 1]]
+        edge_2 = [new_ind[0][rnd_num_2], new_ind[0][rnd_num_2 + 1]]
 
         # If edges cross then swap and break
         if edges_cross(edge_1, edge_2):
 
             # Make two sequences
-            testseq1 = deepcopy(seq)
-            testseq2 = deepcopy(seq)
+            testseq1 = deepcopy(new_ind[0])
+            testseq2 = deepcopy(new_ind[0])
 
             # Make swap on first sequence
             tmp = testseq1[rnd_num + 1]
             testseq1[rnd_num + 1] = testseq1[rnd_num_2]
             testseq1[rnd_num_2] = tmp
 
-            testIndividual1 = [testseq1, sol[1]]
+            testIndividual1 = deepcopy([testseq1, new_ind[1]])
 
             # Make swap on second sequence
             tmp = testseq2[rnd_num + 1]
             testseq2[rnd_num + 1] = testseq2[rnd_num_2 + 1]
             testseq2[rnd_num_2 + 1] = tmp
 
-            testIndividual2 = [testseq2, sol[1]]
+            testIndividual2 = deepcopy([testseq2, new_ind[1]])
 
             if evaluate_fitness(testIndividual1, depot) > \
                     evaluate_fitness(
                     testIndividual2, depot):
-                sol = testIndividual1
+                new_ind = deepcopy(testIndividual1)
             else:
-                sol = testIndividual2
+                new_ind = deepcopy(testIndividual2)
 
+    return new_ind
 
 def edges_cross(edge1, edge2):
     [A, B] = edge1
