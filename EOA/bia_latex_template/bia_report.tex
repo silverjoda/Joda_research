@@ -51,20 +51,20 @@ The last approach, the memetic algorithm simply extends the evolutionary algorit
 The initial experiments have been done on randomly generated graph to validate and compare the three algorithms.
 To make a fair comparison, however, we need to create a few benchmark instances and evaluate the algorithms on those instances. We use a total of 10 instances to evaluate each algorithm on and take the average score which we will then compare. In figure \ref{fig:progfig} we can see an iteration plot of all three algorithms to get 
 a visual understanding and comparison of the progress of each algorithm. We can see that the local algorithm
-converges to a local solution almost immediately and does not continue to improve. Due to implementation reasons we do not consider execution times of each algorithm, but rather the iterations that it takes. 
+converges to a local solution almost immediately and does not continue to improve. Due to implementation reasons we do not consider execution times of each algorithm, but rather the iterations that they takes. 
 
 
 \begin{figure}[ht]
   \centering
-    \includegraphics{figure}
+    \includegraphics[width=9cm]{progplot}
       \caption{Progress plot of each algorithm}
     \label{fig:progfig}
 \end{figure}
 
 \begin{figure}[ht]
   \centering
-    \includegraphics{figure}
-      \caption{Visual solutions}
+    \includegraphics[width=9cm]{clean}
+      \caption{Visual solutions of n = 22, m = 3}
     \label{fig:solfig}
 \end{figure}
 
@@ -77,18 +77,19 @@ converges to a local solution almost immediately and does not continue to improv
     & Local & Evolution & Memetic \\
   \hline
   \hline
-  S učitelem  & 0.22 & 0.27 & 0.29 \\
+  Distance of largest tour  & 2281 & 1825 & 1718 \\
   \hline
   \end{tabular}
   \label{tab:extab}
 \end{table}
 
 
-
 \section{Discussion}
+As expected, the local search converged immediately and did not improve further. The standard evolutionary algorithm took much longer to train but got decent results. The memetic algorithm got on average the best results. This was expected as the evolutionary algorithm sometimes has problems with small local changes. This is mediated by the 2-opt which is added in the memetic algorithm to let weaker individuals improve themselves.
+Results could most likely be further improved by tuning the evolutionary algorithm hyperparameters such as population size, mutation rate, etc. 
 
 \section{Conclusion}
-
+We have seen that a simple evolutionary algorithm can give us reasonable approximate solutions to an np-hard problem such as the mTSP. This approach is credited because it's relatively simple to implement. For a large amount of cities, however, this algorithm has trouble working out of the box and can be very slow so it requires an efficient implementation and more hyperparameter tuning.
 
 
 \end{document}

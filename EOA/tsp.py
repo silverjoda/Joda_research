@@ -6,10 +6,10 @@ from copy import copy
 from copy import deepcopy
 
 # ======== Define simulation parameters
-n_Vertices = 36 # Amount of vertices (only valid if generating random graph)
+n_Vertices = 96 # Amount of vertices (only valid if generating random graph)
 n_ts = 5 # Amount of travelling salesmen
-n_iters = int(6000) # Amount of iterations (generations) for algorithm
-algorithm = 'evo' # Choose algorithm from {local, evo, meme}
+n_iters = int(3000) # Amount of iterations (generations) for algorithm
+algorithm = 'meme' # Choose algorithm from {local, evo, meme}
 vertex_xy_range = [0,1000] # Range of coordinates that vertices can have
 depot_xy_range = [400,600] # Range of coordinates that depot can have
 n_random_perms = n_Vertices*5 # Amount of random permutations
@@ -18,7 +18,7 @@ path_distance_delta_penalty = 1 # Constant which penalizes the difference
 # between max and min tours
 
 # Evo algorithm parameters
-n_generations = int(6000) # Amount of times that the algorithm will be run
+n_generations = int(3000) # Amount of times that the algorithm will be run
 pop_size = 300 # Size of the population
 pop_selection_size = pop_size/6 # Amount of parent individuals selected from
 # population
@@ -30,7 +30,7 @@ def main():
 
     """
 
-    n_reps = 5
+    n_reps = 0
     fitnesses = np.zeros((3, n_reps, n_iters))
 
     for i in range(n_reps):
@@ -47,9 +47,9 @@ def main():
         fitnesses[2, i] = meme_search(G)
 
     # Save average performance of algorithms
-    np.save('Progresses.npy', fitnesses)
+    #np.save('Progresses.npy', fitnesses)
 
-    exit()
+    #exit()
 
 
     np.random.seed(0)
@@ -68,7 +68,7 @@ def main():
         print 'Error, algorithm not found, exiting simulation. '
         exit()
 
-    plt.pause(5)
+    plt.pause(500)
 
 def plot_graph(G, boundaries, depot):
 
