@@ -8,21 +8,21 @@ from copy import deepcopy
 # ======== Define simulation parameters
 n_Vertices = 32 # Amount of vertices (only valid if generating random graph)
 n_ts = 3 # Amount of travelling salesmen
-n_iters = int(3000) # Amount of iterations (generations) for algorithm
+n_iters = int(4000) # Amount of iterations (generations) for algorithm
 algorithm = 'meme' # Choose algorithm from {local, evo, meme}
 vertex_xy_range = [0,1000] # Range of coordinates that vertices can have
 depot_xy_range = [400,600] # Range of coordinates that depot can have
 n_random_perms = n_Vertices*5 # Amount of random permutations
-fitness_scaling_constant = 1e6 # Scale the fitness for visual convenience
-path_distance_delta_penalty = 1 # Constant which penalizes the difference
+
 # between max and min tours
 
 # Evo algorithm parameters
-n_generations = int(3000) # Amount of times that the algorithm will be run
-pop_size = 200 # Size of the population
-pop_selection_size = pop_size/6 # Amount of parent individuals selected from
+n_generations = int(4000) # Amount of times that the algorithm will be run
+pop_size = 400 # Size of the population
+pop_selection_size = pop_size/10 # Amount of parent individuals selected from
 # population
-mutation_alpha = 0.03 # Chance to mutate
+mutation_alpha = 0.06 # Chance to mutate
+bad_acceptance_prob =  0.1
 
 def main():
     """
@@ -35,28 +35,26 @@ def main():
              PATH + "mTSP_100.data",
              PATH + "mTSP_200.data"]
 
-    n_reps = 1
+    n_reps = 7
     fitnesses = np.zeros((4, n_reps, n_iters))
 
     for i in range(n_reps):
         # Generate a random complete undirected graph of n_V vertices
         # The first vertex is the Depot!
         #G = generate_random_tsp_vertices(n_Vertices)
-        G = read_graph_from_file(
-            "/home/shagas/Data/SW/Joda_research/EOA/mtsp_data/mTSP_50.data")
+        G = read_graph_from_file(files[0])
 
         # Initialize plot
         plt.axis([0, 1000, 0, 1000])
         plt.ion()
 
-        #fitnesses[0, i] = local_search(G)
-        #fitnesses[1, i] = local_imp_search(G)
-        #fitnesses[2, i] = evo_search(G)
+        fitnesses[0, i] = local_search(G)
+        fitnesses[1, i] = local_imp_search(G)
+        fitnesses[2, i] = evo_search(G)
         fitnesses[3, i] = meme_search(G)
 
     # Save average performance of algorithms
     np.save('Progresses.npy', fitnesses)
-
 
     exit()
 
@@ -314,7 +312,7 @@ def evo_search(G_in):
 
 
         # Sort population in descending fitness ***
-        popfit = [[F, P] for (F, P) in sorted(zip(fitnesses, population),
+        population = [P for (F, P) in sorted(zip(fitnesses, population),
                                              reverse=False,
                                              key=lambda pair: pair[0])]
 
@@ -336,7 +334,7 @@ def evo_search(G_in):
                                       np.mean(fitnesses),
                                       np.median(fitnesses))
 
-            plt.hist(fitnesses, bins=30)
+            plt.hist(fitnesses, bins=50)
             plt.pause(0.1)
 
 
@@ -360,12 +358,14 @@ def evo_search(G_in):
         total_fitness = sum(ev_fitnesses)
         fit_probs = np.array(ev_fitnesses)/total_fitness
 
+        # Make the choices of individuals
+        idxs1 = [np.random.choice(len(fitnesses), p=fit_probs) for _ in
+                 range(pop_selection_size)]
+        idxs2 = [np.random.choice(len(fitnesses), p=fit_probs) for _ in
+                 range(pop_selection_size)]
 
-        # Make 100 new individuals from selected units
-        for j in range(pop_selection_size):
-
-            idx1 = np.random.choice(len(fitnesses), p=fit_probs)
-            idx2 = np.random.choice(len(fitnesses), p=fit_probs)
+        # Make n new individuals from selected units
+        for idx1, idx2 in zip(idxs1, idxs2):
 
             p1 = population[idx1]
             p2 = population[idx2]
@@ -376,14 +376,24 @@ def evo_search(G_in):
 
             if evaluate_fitness(offspring1, depot) < evaluate_fitness(p1, depot):
                 population[idx1] = deepcopy(offspring1)
-            elif random.random() < mutation_alpha:
+            elif random.random() < bad_acceptance_prob:
                 population[idx1] = deepcopy(offspring1)
 
             if evaluate_fitness(offspring2, depot) < evaluate_fitness(p2, depot):
                 population[idx2]= deepcopy(offspring2)
-            elif random.random() < mutation_alpha:
+            elif random.random() < bad_acceptance_prob:
                 population[idx2] = deepcopy(offspring2)
 
+        for n in xrange(np.random.randint(1,pop_size/10)):
+            # SWAP VERTICES ==========================
+
+            #  Generate two random numbers
+            rand_v1, rand_v2 = generate_two_unique_random_numbers(0, seq_length)
+
+            # Swap the corresponding vertices
+            v_tmp = population[rand_v2]
+            population[rand_v2] = deepcopy(population[rand_v1])
+            population[rand_v1] = deepcopy(v_tmp)
 
     return progress
 
@@ -439,7 +449,7 @@ def meme_search(G_in):
 
         if i % (n_iters / 100) == 0:
             plot_graph(population[0][0], population[0][1], depot)
-            plt.hist(fitnesses, bins=30)
+            plt.hist(fitnesses, bins=50)
             plt.pause(0.1)
 
         # Print fitness of best individual
@@ -450,6 +460,8 @@ def meme_search(G_in):
                                       evaluate_fitness(population[0], depot),
                                       np.mean(fitnesses),
                                       np.median(fitnesses))
+
+
 
         # Invert fitnesses
         ev_fitnesses = np.array([1 / f for f in fitnesses])
@@ -471,12 +483,15 @@ def meme_search(G_in):
         total_fitness = sum(ev_fitnesses)
         fit_probs = np.array(ev_fitnesses) / total_fitness
 
-        # Make 100 new individuals from selected units
-        for j in range(pop_selection_size):
+        # Make the choices of individuals
+        idxs1 = [np.random.choice(len(fitnesses), p=fit_probs) for _ in
+                 range(pop_selection_size)]
+        idxs2 = [np.random.choice(len(fitnesses), p=fit_probs) for _ in
+                 range(pop_selection_size)]
 
-            # Roulette selection
-            idx1 = np.random.choice(len(fitnesses), p=fit_probs)
-            idx2 = np.random.choice(len(fitnesses), p=fit_probs)
+
+        # Make 100 new individuals from selected units
+        for idx1, idx2 in zip(idxs1, idxs2):
 
             p1 = population[idx1]
             p2 = population[idx2]
@@ -489,7 +504,6 @@ def meme_search(G_in):
             offspring1 = perform_2opt(offspring1, depot)
             offspring2 = perform_2opt(offspring2, depot)
 
-
             if evaluate_fitness(offspring1, depot) < evaluate_fitness(p1, depot):
                 population[idx1] = deepcopy(offspring1)
             elif random.random() < mutation_alpha:
@@ -500,6 +514,43 @@ def meme_search(G_in):
             elif random.random() < mutation_alpha:
                 population[idx2] = deepcopy(offspring2)
 
+        # Perform 2-opt on a portion of the population
+        idx_arr = np.arange(pop_size)
+        np.random.shuffle(idx_arr)
+        idxs2opt = idx_arr[:pop_size / 10]
+
+        for idx in idxs2opt:
+            population[idx] = perform_2opt(population[idx], depot)
+
+
+        # Perform random mutations
+        for n in xrange(np.random.randint(1, pop_size / 10)):
+            # SWAP VERTICES ==========================
+
+            #  Generate two random numbers
+            rand_v1, rand_v2 = generate_two_unique_random_numbers(0, seq_length)
+
+            # Swap the corresponding vertices
+            v_tmp = population[rand_v2]
+            population[rand_v2] = deepcopy(population[rand_v1])
+            population[rand_v1] = deepcopy(v_tmp)
+
+    # Print info to file
+    f = open('/home/shagas/Data/SW/Joda_research/EOA/output.txt', 'w')
+    f.write("50\n")
+    f.write("3\n")
+    f.write("mTSP_50.data\n")
+
+    seq = population[0][0]
+    bounds = population[0][1]
+
+    f.write(seq[:bounds[0]])
+    f.write(seq[bounds[0]:bounds[1]])
+    f.write(seq[bounds[1]:])
+
+    f.close()
+
+
 
     return progress
 
@@ -509,7 +560,7 @@ def perform_2opt(sol, depot):
 
 
     # Go over each node in the solution
-    for i in range(n_Vertices):
+    for i in range(n_Vertices/7):
 
         # Pick random node from the solution
         rnd_num = random.randint(0, len(new_ind[0]) - 2)
@@ -677,19 +728,6 @@ def evaluate_fitness(solution, depot):
 
         # Add to total tour length
         tour_lengths.append(tour_length)
-
-    # Part of the fitness is the total length
-    total_tour_length = sum(tour_lengths)
-
-    # Penalize for the maximum tour length (force all to be equal length)
-    max_tourlength_penalty = max(tour_lengths) - min(tour_lengths)
-
-    # Add all components of penalty
-    total_penalty = total_tour_length + \
-                    max_tourlength_penalty*path_distance_delta_penalty
-
-    # We want fitness to be lower with higher penalty
-    fitness = fitness_scaling_constant*(1/total_penalty)
 
     return max(tour_lengths)
 
