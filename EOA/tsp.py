@@ -8,7 +8,7 @@ from copy import deepcopy
 # ======== Define simulation parameters
 n_Vertices = 32 # Amount of vertices (only valid if generating random graph)
 n_ts = 3 # Amount of travelling salesmen
-n_iters = int(4000) # Amount of iterations (generations) for algorithm
+n_iters = int(5000) # Amount of iterations (generations) for algorithm
 algorithm = 'meme' # Choose algorithm from {local, evo, meme}
 vertex_xy_range = [0,1000] # Range of coordinates that vertices can have
 depot_xy_range = [400,600] # Range of coordinates that depot can have
@@ -17,7 +17,7 @@ n_random_perms = n_Vertices*5 # Amount of random permutations
 # between max and min tours
 
 # Evo algorithm parameters
-n_generations = int(4000) # Amount of times that the algorithm will be run
+n_generations = int(5000) # Amount of times that the algorithm will be run
 pop_size = 400 # Size of the population
 pop_selection_size = pop_size/10 # Amount of parent individuals selected from
 # population
@@ -35,7 +35,7 @@ def main():
              PATH + "mTSP_100.data",
              PATH + "mTSP_200.data"]
 
-    n_reps = 7
+    n_reps = 1
     fitnesses = np.zeros((4, n_reps, n_iters))
 
     for i in range(n_reps):
@@ -544,13 +544,11 @@ def meme_search(G_in):
     seq = population[0][0]
     bounds = population[0][1]
 
-    f.write(seq[:bounds[0]])
-    f.write(seq[bounds[0]:bounds[1]])
-    f.write(seq[bounds[1]:])
+    f.write(str(seq[:bounds[0]]) + "\n")
+    f.write(str(seq[bounds[0]:bounds[1]]) + "\n")
+    f.write(str(seq[bounds[1]:]) + "\n")
 
     f.close()
-
-
 
     return progress
 
