@@ -21,13 +21,14 @@ def plot_acc_matrix(test_acc_matrix, title):
     fig = plt.figure()
 
     # red dashes, blue squares and green triangles
-    plt.plot(t, mat[0,2], 'r-', t, mat[1,2], 'b-', t, mat[2,2], 'g-')
+    plt.plot(t, mat[0,0], 'r-', t, mat[1,0], 'b-', t, mat[2,0], 'g-', t,
+             mat[3,0], 'y-')
 
     #plt.xscale('log')
     plt.title(title)
     plt.xlabel("Iters")
     plt.ylabel("Distance")
-    plt.legend(["Local","Evo","Meme"])
+    plt.legend(["Local","Local_imp","Evo","Meme"])
     #plt.ylim(0.6,1.7)
     plt.xlim(0, 1700)
 
