@@ -6,9 +6,9 @@ from copy import copy
 from copy import deepcopy
 
 # ======== Define simulation parameters
-n_Vertices = 32 # Amount of vertices (only valid if generating random graph)
-n_ts = 3 # Amount of travelling salesmen
-n_iters = int(5000) # Amount of iterations (generations) for algorithm
+n_Vertices = 50 # Amount of vertices (only valid if generating random graph)
+n_ts = 5 # Amount of travelling salesmen
+n_iters = int(4000) # Amount of iterations (generations) for algorithm
 algorithm = 'meme' # Choose algorithm from {local, evo, meme}
 vertex_xy_range = [0,1000] # Range of coordinates that vertices can have
 depot_xy_range = [400,600] # Range of coordinates that depot can have
@@ -17,8 +17,8 @@ n_random_perms = n_Vertices*5 # Amount of random permutations
 # between max and min tours
 
 # Evo algorithm parameters
-n_generations = int(5000) # Amount of times that the algorithm will be run
-pop_size = 400 # Size of the population
+n_generations = int(4000) # Amount of times that the algorithm will be run
+pop_size = 300 # Size of the population
 pop_selection_size = pop_size/10 # Amount of parent individuals selected from
 # population
 mutation_alpha = 0.06 # Chance to mutate
@@ -42,19 +42,21 @@ def main():
         # Generate a random complete undirected graph of n_V vertices
         # The first vertex is the Depot!
         #G = generate_random_tsp_vertices(n_Vertices)
-        G = read_graph_from_file(files[0])
+        G = read_graph_from_file(files[1])
 
         # Initialize plot
         plt.axis([0, 1000, 0, 1000])
         plt.ion()
 
-        fitnesses[0, i] = local_search(G)
-        fitnesses[1, i] = local_imp_search(G)
+        #fitnesses[0, i] = local_search(G)
+        #fitnesses[1, i] = local_imp_search(G)
         fitnesses[2, i] = evo_search(G)
-        fitnesses[3, i] = meme_search(G)
+        #fitnesses[3, i] = meme_search(G)
 
     # Save average performance of algorithms
     np.save('Progresses.npy', fitnesses)
+
+    plt.pause(5)
 
     exit()
 
@@ -270,6 +272,23 @@ def local_imp_search(G_in):
         #best_fitness = iter_fitness
         progress.append(iter_fitness)
 
+
+    # Print info to file
+    f = open('/home/shagas/Data/SW/Joda_research/EOA/output.txt', 'w')
+    f.write("50\n")
+    f.write("3\n")
+    f.write("mTSP_50.data\n")
+
+    seq = solution[0]
+    bounds = solution[1]
+
+    f.write(str(seq[:bounds[0]]) + "\n")
+    f.write(str(seq[bounds[0]:bounds[1]]) + "\n")
+    f.write(str(seq[bounds[1]:]) + "\n")
+
+    f.close()
+
+
     return progress
 
 
@@ -330,13 +349,13 @@ def evo_search(G_in):
             print "Generation: {}/{}: Fitness of best: {}, mean: {}, " \
                   "median: {}".format(i,
                                       n_iters,
-                                      evaluate_fitness(population[0], depot),
+                                      evaluate_fitness(population[0],
+                                                       depot),
                                       np.mean(fitnesses),
                                       np.median(fitnesses))
 
             plt.hist(fitnesses, bins=50)
             plt.pause(0.1)
-
 
         # Invert fitnesses
         ev_fitnesses = np.array([1/f for f in fitnesses])
@@ -357,6 +376,7 @@ def evo_search(G_in):
         # Calculate total fitness
         total_fitness = sum(ev_fitnesses)
         fit_probs = np.array(ev_fitnesses)/total_fitness
+
 
         # Make the choices of individuals
         idxs1 = [np.random.choice(len(fitnesses), p=fit_probs) for _ in
@@ -394,6 +414,21 @@ def evo_search(G_in):
             v_tmp = population[rand_v2]
             population[rand_v2] = deepcopy(population[rand_v1])
             population[rand_v1] = deepcopy(v_tmp)
+
+            # Print info to file
+        f = open('/home/shagas/Data/SW/Joda_research/EOA/output.txt', 'w')
+        f.write("50\n")
+        f.write("3\n")
+        f.write("mTSP_50.data\n")
+
+        seq = population[0][0]
+        bounds = population[0][1]
+
+        f.write(str(seq[:bounds[0]]) + "\n")
+        f.write(str(seq[bounds[0]:bounds[1]]) + "\n")
+        f.write(str(seq[bounds[1]:]) + "\n")
+
+        f.close()
 
     return progress
 
@@ -517,7 +552,7 @@ def meme_search(G_in):
         # Perform 2-opt on a portion of the population
         idx_arr = np.arange(pop_size)
         np.random.shuffle(idx_arr)
-        idxs2opt = idx_arr[:pop_size / 10]
+        idxs2opt = idx_arr[:pop_size / 7]
 
         for idx in idxs2opt:
             population[idx] = perform_2opt(population[idx], depot)
@@ -535,20 +570,7 @@ def meme_search(G_in):
             population[rand_v2] = deepcopy(population[rand_v1])
             population[rand_v1] = deepcopy(v_tmp)
 
-    # Print info to file
-    f = open('/home/shagas/Data/SW/Joda_research/EOA/output.txt', 'w')
-    f.write("50\n")
-    f.write("3\n")
-    f.write("mTSP_50.data\n")
 
-    seq = population[0][0]
-    bounds = population[0][1]
-
-    f.write(str(seq[:bounds[0]]) + "\n")
-    f.write(str(seq[bounds[0]:bounds[1]]) + "\n")
-    f.write(str(seq[bounds[1]:]) + "\n")
-
-    f.close()
 
     return progress
 
@@ -558,7 +580,7 @@ def perform_2opt(sol, depot):
 
 
     # Go over each node in the solution
-    for i in range(n_Vertices/7):
+    for i in range(n_Vertices/5):
 
         # Pick random node from the solution
         rnd_num = random.randint(0, len(new_ind[0]) - 2)

@@ -21,11 +21,12 @@ We take a look at the mTSP problem and compare various approaches to finding app
 \IEEEpeerreviewmaketitle
 
 \section{Task}
-The Travelling Salesman Problem (TSP) is a task where given a number of cities we are looking for the shortest path that we can take while visiting all the cities only once and ending up at the city where we started at. 
-This task can also be formalized as finding the shortest tour in a weighted non-oriented graph. \\
-The mTSP task is a generalization to the TSP where we have multiple agents traversing the same graph. No agent is allowed to visit a city that has been visited by another agent.
+The task is to find an approximate solution to a variant of the Travelling Salesman Problem using local search and evolutionary algorithms and to compare the results of the algorithms.
 
 \section{Introduction}
+The Travelling Salesman Problem (TSP) is a task where given a number of cities we are looking for the shortest path that we can take while visiting all the cities only once and ending up at the city where we started at. 
+This task can also be formalized as finding the shortest tour in a weighted non-oriented graph. \\
+The mTSP task is a generalization to the TSP where we have multiple agents
 The mTSP, as the vanilla TSP problem are inherently NP-hard. We therefore have to use various approximate
 optimization techniques which help us find an 'acceptable' solution to the problem.
 
@@ -42,10 +43,8 @@ The first approach is a simple local search algorithm. At every iteration we per
 and the 'best swap' is recorded out of that iteration. The best swap is then performed and saved. \\
 We also use an improved version of the local search algorithm where we perform a series of swaps and then keep only the best swap. This allows for solution worsening and as we will see in the results, performs better than the first version.
 The second approach is a basic evolutionary algorithm on the same representation of the problem. 
-A population of 200 is used at every iteration. The parents are selected using a standard roulette approach
-and two new offspring are created using a one-point crossover operator. In order to produce a valid solution
-every time we need to slightly modify the crossover operator. This is done by the offspring receiving part of the solution from one parent and sequentially recieving the rest of the sequence from the other parent such that the final sequence is valid. As a mutation, in each iteration we allow the boundaries of each agent to change with chance, meaning that each agent can have fewer or more cities in their path. The new offspring are accepted if they are better than their parents and accepted with a small chance if they are worse. \\
-The last approach, the memetic algorithm simply extends the evolutionary algorithm by a local search at each iteration. This is done by using 2-opt on every new offspring after it is created. This is a method to let weak individuals locally improve and give them a chance to be selected in the next evaluation.
+A population of 300 individuals is used at every iteration. The parents are selected using a standard roulette approach and two new offspring are created using a one-point crossover operator. In each generation we select a tenth of the population to create new offspring. In order to produce a valid  every time we need to slightly modify the crossover operator. This is done by the offspring receiving part of the solution from one parent and sequentially recieving the rest of the sequence from the other parent such that the final sequence is valid. As a mutation, in each iteration we allow the boundaries of each agent to change with chance, meaning that each agent can have fewer or more cities in their path. The mutation rate is set to about 5\%. The new offspring are accepted if they are better than their parents and accepted with a small chance if they are worse. \\
+The last approach, the memetic algorithm simply extends the evolutionary algorithm by a local search at each iteration. This is done by using 2-opt on randomly chosen individuals from the population at each generation after the new individuals have been created. This is a method to let weak individuals locally improve and give them a chance to be selected in the next evaluation.
 
 
 \section{Experiments}
@@ -54,8 +53,6 @@ To make a fair comparison, however, we use the provided benchmark graph and eval
 a visual understanding and comparison of the progress of each algorithm. We can see that the local algorithm
 converges to a local solution almost immediately and does not continue to improve. Due to implementation reasons we do not consider execution times of each algorithm, but rather the iterations that they takes. 
 During the tuning phase of the algorithms a fitness histogram was plotted it was noted that the population converges prematurely, leading to local minima. To attempt to combat this we used a higher population size and linear fitness scaling, but this did not entirely eliminate the problem.
-
-
 
 
 \begin{figure}[ht]
@@ -76,12 +73,12 @@ During the tuning phase of the algorithms a fitness histogram was plotted it was
 \begin{table}
   \centering
   \caption{Average scores of the three algorithms}
-  \begin{tabular}{|l||c|c|c|}
+  \begin{tabular}{|l||c|c|c|c|}
   \hline
-    & Local & Evolution & Memetic \\
+    & Local & Local imp & Evolution & Memetic\\
   \hline
   \hline
-  Distance of largest tour  & 2281 & 1825 & 1718 \\
+  Distance of largest tour  & 6411 & 5100 & 5161 & 5194 \\
   \hline
   \end{tabular}
   \label{tab:extab}
@@ -89,12 +86,12 @@ During the tuning phase of the algorithms a fitness histogram was plotted it was
 
 
 \section{Discussion}
-As expected, the local search converged immediately and did not improve further. The standard evolutionary algorithm took much longer to train but got decent results. The memetic algorithm got on average the best results. This was expected as the evolutionary algorithm sometimes has problems with small local changes. This is mediated by the 2-opt which is added in the memetic algorithm to let weaker individuals improve themselves.
-Results could most likely be further improved by tuning the evolutionary algorithm hyperparameters such as population size, mutation rate, etc. \\
+As expected, the local search converged immediately and did not improve further. The improved local search (similar to simulated annealing) performed best.
+The evolutionary algorithms proved difficult to train as the population converged prematurely to a local minimum. This is a common problem in EA and is mediated by a few different methods. We attempted to increase population and modify the selection/replacement strategy, as well as applying linear fitness scaling to provide the necessary selection pressure. This improved the solution, but still led to premature convergence. This could be seen by plotting a fitness histogram at each iteration. The standard evolutionary algorithm took much longer to train but got comparable results. The memetic algorithm performs on average similarly to the evolutionary algorithm, this is probably due to the inadequately chosen fitness or due to the 2-opt not being performed that often given that it is very expensive to compute unless a sofisticated implementation is used. Results could most likely be further improved by tuning the evolutionary algorithm hyperparameters such as population size, mutation rate, etc. \\
 
 
 \section{Conclusion}
-We have seen that a simple evolutionary algorithm can give us reasonable approximate solutions to an np-hard problem such as the mTSP. This approach is credited because it's relatively simple to implement. For a large amount of cities, however, this algorithm has trouble working out of the box and can be very slow so it requires an efficient implementation and more hyperparameter tuning.
+We have seen that a simple local search and evolutionary algorithm can give us reasonable approximate solutions to an np-hard problem such as the mTSP. These types of approaches are credited because they are relatively simple to implement. For a large amount of cities, however, this algorithm has trouble working out of the box and can be very slow so it requires an efficient implementation and more hyperparameter tuning.
 
 
 \end{document}

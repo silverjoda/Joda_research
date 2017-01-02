@@ -34,7 +34,7 @@ def plot_acc_matrix(test_acc_matrix, title):
     #plt.ylim(0.6,1.7)
     plt.xlim(0, 4000)
 
-    plt.savefig("{}.png".format(title.replace(" ", "")), dpi=100)
+    #plt.savefig("{}.png".format(title.replace(" ", "")), dpi=100)
 
     plt.show()
 
