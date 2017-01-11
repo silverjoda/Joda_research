@@ -112,6 +112,76 @@ def Q_learning(n_epochs, max_iters, alpha, eps):
     show_epoch(initial_state, greedy_policy, Q, max_iters=100)
     plt.show()
 
+def policyIteration(n_epochs, max_iters, theta):
+
+    # Random value matrix
+    V = np.random.randint(-10,0, size=(H, W))
+
+    # Random policy initialization
+    P = np.random.randint(0,4, size=(H, W))
+
+    # Epoch counter
+    e = 0
+
+    # Run
+    while e < n_epochs:
+
+        e += 1
+
+        print "Policy iteration, iter: {}".format(e)
+
+        # ==================
+        # Policy evaluation
+        # ==================
+
+        delta = 0
+
+        for i in range(3):
+            for s in istates():
+                v = V[s[0],s[1]]
+
+                # Get action from our current policy
+                a = P[s[0],s[1]]
+
+                # Observe reward
+                r, s_ = step(s,a)
+
+                V[s[0], s[1]] = r + V[s_[0], s_[1]]
+
+                #delta = np.max([delta, np.abs(v - V[s[0], s[1]]) ])
+
+
+        # ==================
+        # Policy improvement
+        # ==================
+
+        policy_stable = True
+
+        for s in istates():
+            b = P[s[0],s[1]]
+
+            # Get destinations and rewards for all actions
+            dest = [step(s, i) for i in range(4)]
+
+            # Take argmax to improve policy
+            P[s[0], s[1]] = np.argmax([r + V[s_[0], s_[1]] for (r, s_) in dest])
+
+            if b != P[s[0], s[1]]:
+                policy_stable = False
+
+        if policy_stable:
+            break
+
+    # Empty q value matrix
+    Q = np.zeros((4, H, W))
+
+    # Make Q matrix
+    for s in istates():
+        Q[P[s[0],s[1]],s[0],s[1]] = V[s[0],s[1]]
+
+    show_epoch(initial_state, greedy_policy, Q, max_iters=100)
+    plt.show()
+
 
 def chooseAction(s, policy, Q):
     # Pick action greedily
@@ -137,6 +207,7 @@ def main():
     max_iters = 100
     sarsa_alpha = 0.1
     sarsa_eps = 0.1
+    policy_iter_theta = 3
 
 
     # Perform value iteration
@@ -146,11 +217,10 @@ def main():
     #SARSA(n_epochs, max_iters, sarsa_alpha, sarsa_eps)
 
     # Perform Q-learning algorithm
-    Q_learning(n_epochs, max_iters, sarsa_alpha, sarsa_eps)
+    #Q_learning(n_epochs, max_iters, sarsa_alpha, sarsa_eps)
 
-
-
-
+    # Perform Policy iteration
+    policyIteration(n_epochs, max_iters, policy_iter_theta)
 
 
 if __name__ == "__main__":
