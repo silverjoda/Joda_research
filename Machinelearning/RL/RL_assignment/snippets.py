@@ -1,5 +1,4 @@
 import numpy as np
-import matplotlib
 import matplotlib.pyplot as plt
 from itertools import chain
 from collections import namedtuple
@@ -141,7 +140,7 @@ def show_epoch(start_state, policy, Q, max_iters=100):
     dirs = {0: (-0.8, 0), 1: (0.8, 0), 2: (0, -0.8), 3: (0, 0.8)}
     S, A, R = epoch(start_state, greedy_policy, Q, max_iters=max_iters)
     ax = plt.gca()
-    ax.imshow(q_to_v(Q, policy), interpolation='nearest', origin='upper');
+    ax.imshow(q_to_v(Q, policy), interpolation='nearest', origin='upper')
     #     ax.plot([s.x for s in S], [s.y for s in S], c='k')
     ax.text(start_state[1], start_state[0], 'S', ha='center', va='center', fontsize=20)
     for s in goal_states:
@@ -150,3 +149,4 @@ def show_epoch(start_state, policy, Q, max_iters=100):
         ax.add_patch(plt.Arrow(s.x + offsets[a][0], s.y + offsets[a][1], dirs[a][0], dirs[a][1]))
 
     plt.title('reward: {}'.format(np.sum(R)))
+
