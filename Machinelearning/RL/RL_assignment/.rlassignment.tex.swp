@@ -29,8 +29,7 @@ We will take a look at using a few different algorithms for finding the optimal 
 
 \section{Value iteration}
 We will first use a value iteration approach to finding the optimal Q-function (action value function). 
-The algorithm converges in 683 iterations to the optimal Q-value, meaning the Q-matrix for which we get the maximal
-reward out of our MDP, in this case -15. Below is the Q matrix for each of the actions in order and the policy plotted in the gridworld.
+The algorithm converges in 683 epochs to the optimal Q-value, meaning the Q-matrix for which we get the maximal reward out of our MDP, in this case -15. We use a maximum of 100 iterations per epoch. Below is the Q matrix for each of the actions in order and the policy plotted in the gridworld.
 
 \includegraphics[width=11cm]{actionvaluepolicy.png}
 \\
@@ -84,8 +83,34 @@ Action: Down
 \]
 
 \section{SARSA}
+For the SARSA algorithm we use a greedy policy with eploration noise coefficients $\epsilon$ in ranges of $\{ 0.01, 0.1, 0.3\}$ and learning rates $\alpha$ of $\{ 0.01, 0.1, 0.3\}$ . Below are the plots for each algorithm. We can see that an $\epsilon$ of $0.01$ gives the most stable results, with higher epsilon giving divergent behavior for higher learning rates. We can also note that a learning rate of $0.01$ is too little and take too long to converge.
 
+\begin{figure}[htp]
 
+\centering
+\includegraphics[width=.33\textwidth]{sarsaeps001}\hfill
+\includegraphics[width=.33\textwidth]{sarsaeps01}\hfill
+\includegraphics[width=.33\textwidth]{sarsaeps03}
+
+\caption{default}
+\label{fig:figure3}
+
+\end{figure}
+
+\section{Q-learning}
+For the Q-learning (SARSA-max) algorithm we also use a greedy policy with eploration noise coefficients $\epsilon$ in ranges of $\{ 0.01, 0.1, 0.3\}$ and learning rates $\alpha$ of $\{ 0.01, 0.1, 0.3\}$ . Below are the plots for each algorithm. We can see that an $\epsilon$ of $0.01$ gives the most stable results, with higher epsilon giving divergent behavior for higher learning rates.
+
+\begin{figure}[htp]
+
+\centering
+\includegraphics[width=.33\textwidth]{qleps001}\hfill
+\includegraphics[width=.33\textwidth]{qleps01}\hfill
+\includegraphics[width=.33\textwidth]{qleps03}
+
+\caption{default}
+\label{fig:figure3}
+
+\end{figure}
 
 \section{Discussion}
 

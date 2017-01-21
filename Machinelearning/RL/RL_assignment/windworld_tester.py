@@ -64,13 +64,15 @@ def valueIteration(n_epochs, max_iters):
 
 def SARSA(n_epochs, max_iters, alpha, eps, optQ):
 
-    plt.figure()
 
     # Empty q value matrix
     Q = np.zeros((4, H, W))
 
     # Epsilon greedy policy
     policy = epsilon_greedy_policy(eps)
+
+    # Q error matrix
+    q_err_mat = []
 
     for i in range(n_epochs):
 
@@ -100,12 +102,14 @@ def SARSA(n_epochs, max_iters, alpha, eps, optQ):
 
             i += 1
 
-    show_epoch(initial_state, greedy_policy, Q, max_iters=100)
-    plt.show()
+        q_err_mat.append(np.sum(np.square(Q - optQ)))
 
-    return Q
+    #show_epoch(initial_state, greedy_policy, Q, max_iters=100)
 
-def Q_learning(n_epochs, max_iters, alpha, eps):
+
+    return Q, q_err_mat
+
+def Q_learning(n_epochs, max_iters, alpha, eps, optQ):
 
     # Empty q value matrix
     Q = np.zeros((4, H, W))
@@ -113,6 +117,8 @@ def Q_learning(n_epochs, max_iters, alpha, eps):
     # Epsilon greedy policy
     policy = epsilon_greedy_policy(eps)
 
+    # Q error matrix
+    q_err_mat = []
 
     for i in range(n_epochs):
 
@@ -138,8 +144,12 @@ def Q_learning(n_epochs, max_iters, alpha, eps):
 
             i += 1
 
-    show_epoch(initial_state, greedy_policy, Q, max_iters=100)
-    plt.show()
+        q_err_mat.append(np.sum(np.square(Q - optQ)))
+
+    #show_epoch(initial_state, greedy_policy, Q, max_iters=100)
+    #plt.show()
+
+    return Q, q_err_mat
 
 def policyIteration(n_epochs, max_iters, theta):
 
@@ -234,21 +244,67 @@ def main():
     # Simulation parameters
     n_epochs = 1000
     max_iters = 100
-    sarsa_alpha = [0.005, 0.01, 0.1]
-    sarsa_eps = [0.005, 0.01, 0.2]
+    sarsa_alpha = [0.01, 0.1, 0.3]
+    sarsa_eps = [0.01, 0.1, 0.3]
+    ql_alpha = [0.05, 0.2, 0.7]
+    ql_eps = [0.05, 0.1, 0.5]
     policy_iter_theta = 3
 
 
     # Perform value iteration
     optQ = valueIteration(n_epochs, max_iters)
+    q_err_mats = []
 
     # Perform Sarsa algorithm
-    for a in sarsa_alpha:
-        for e in sarsa_eps:
-            SARSA(n_epochs, max_iters, a, e, optQ)
+    # for i,e in enumerate(sarsa_eps):
+    #     plt.figure()
+    #
+    #     for a in sarsa_alpha:
+    #         Q, q_err_mat = SARSA(n_epochs, max_iters, a, e, optQ)
+    #         q_err_mats.append(q_err_mat)
+    #
+    #     title = "SARSA, eps: {}".format(e)
+    #
+    #     for q_m in q_err_mats:
+    #         plt.plot(range(n_epochs), q_m)
+    #
+    #     plt.title(title)
+    #     plt.xlabel("Epochs")
+    #     plt.ylabel("Q MSE")
+    #     plt.legend(["a = 0.01","a = 0.1","a = 0.3"])
+    #
+    #     plt.savefig("{}.png".format(title.replace(" ", "")), dpi=100)
+    #
+    #     q_err_mats = []
+    #
+
+    q_err_mats = []
 
     # Perform Q-learning algorithm
-    #Q_learning(n_epochs, max_iters, sarsa_alpha, sarsa_eps)
+    for i, e in enumerate(ql_eps):
+        plt.figure()
+
+        for a in ql_alpha:
+            Q, q_err_mat = Q_learning(n_epochs, max_iters, a, e, optQ)
+            q_err_mats.append(q_err_mat)
+
+        title = "Q-learning, eps: {}".format(e)
+
+        for q_m in q_err_mats:
+            plt.plot(range(n_epochs), q_m)
+
+        plt.title(title)
+        plt.xlabel("Epochs")
+        plt.ylabel("Q MSE")
+        plt.legend(["a = 0.01", "a = 0.1", "a = 0.3"])
+
+        plt.savefig("{}.png".format(title.replace(" ", "")), dpi=100)
+
+        q_err_mats = []
+
+    for q in q_err_mats:
+        print np.min(q)
+
 
     # Perform Policy iteration
     #policyIteration(n_epochs, max_iters, policy_iter_theta)
