@@ -1,6 +1,19 @@
 from snippets import *
 import numpy as np
 
+def bmatrix(a):
+    """Returns a LaTeX bmatrix
+
+    :a: numpy array
+    :returns: LaTeX bmatrix as a string
+    """
+    if len(a.shape) > 2:
+        raise ValueError('bmatrix can at most display two dimensions')
+    lines = str(a).replace('[', '').replace(']', '').splitlines()
+    rv = [r'\begin{bmatrix}']
+    rv += ['  ' + ' & '.join(l.split()) + r'\\' for l in lines]
+    rv +=  [r'\end{bmatrix}']
+    return '\n'.join(rv)
 
 def valueIteration(n_epochs, max_iters):
     # Empty q value matrix
@@ -14,6 +27,12 @@ def valueIteration(n_epochs, max_iters):
                         greedy_policy,
                         Q,
                         max_iters=max_iters)
+
+
+
+        if sum(R) == -15:
+            print "Found optimal Q-function at epoch: {}".format(i)
+            break
 
 
         for i in reversed(range(len(R) - 1, 1, -1)):
@@ -34,16 +53,24 @@ def valueIteration(n_epochs, max_iters):
                 Q[a_p, s_p[0], s_p[1]] = r + gamma * np.max(Q[:, s[0], s[1]])
 
     show_epoch(initial_state, greedy_policy, Q, max_iters=100)
-    plt.show()
+    #plt.title("Gridworld, value iteration. R = -15")
+    #plt.show()
 
-def SARSA(n_epochs, max_iters, alpha, eps):
+    #for j in range(len(Q)):
+    #    print bmatrix(Q[j])
+
+    return Q
+
+
+def SARSA(n_epochs, max_iters, alpha, eps, optQ):
+
+    plt.figure()
 
     # Empty q value matrix
     Q = np.zeros((4, H, W))
 
     # Epsilon greedy policy
     policy = epsilon_greedy_policy(eps)
-
 
     for i in range(n_epochs):
 
@@ -75,6 +102,8 @@ def SARSA(n_epochs, max_iters, alpha, eps):
 
     show_epoch(initial_state, greedy_policy, Q, max_iters=100)
     plt.show()
+
+    return Q
 
 def Q_learning(n_epochs, max_iters, alpha, eps):
 
@@ -205,22 +234,24 @@ def main():
     # Simulation parameters
     n_epochs = 1000
     max_iters = 100
-    sarsa_alpha = 0.1
-    sarsa_eps = 0.1
+    sarsa_alpha = [0.005, 0.01, 0.1]
+    sarsa_eps = [0.005, 0.01, 0.2]
     policy_iter_theta = 3
 
 
     # Perform value iteration
-    #valueIteration(n_epochs, max_iters)
+    optQ = valueIteration(n_epochs, max_iters)
 
     # Perform Sarsa algorithm
-    #SARSA(n_epochs, max_iters, sarsa_alpha, sarsa_eps)
+    for a in sarsa_alpha:
+        for e in sarsa_eps:
+            SARSA(n_epochs, max_iters, a, e, optQ)
 
     # Perform Q-learning algorithm
     #Q_learning(n_epochs, max_iters, sarsa_alpha, sarsa_eps)
 
     # Perform Policy iteration
-    policyIteration(n_epochs, max_iters, policy_iter_theta)
+    #policyIteration(n_epochs, max_iters, policy_iter_theta)
 
 
 if __name__ == "__main__":
