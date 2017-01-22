@@ -246,8 +246,8 @@ def main():
     max_iters = 100
     sarsa_alpha = [0.01, 0.1, 0.3]
     sarsa_eps = [0.01, 0.1, 0.3]
-    ql_alpha = [0.05, 0.2, 0.7]
-    ql_eps = [0.05, 0.1, 0.5]
+    ql_alpha = [0.1, 0.5, 0.9]
+    ql_eps = [0.01, 0.1, 0.5]
     policy_iter_theta = 3
 
 
@@ -255,28 +255,30 @@ def main():
     optQ = valueIteration(n_epochs, max_iters)
     q_err_mats = []
 
-    # Perform Sarsa algorithm
-    # for i,e in enumerate(sarsa_eps):
-    #     plt.figure()
-    #
-    #     for a in sarsa_alpha:
-    #         Q, q_err_mat = SARSA(n_epochs, max_iters, a, e, optQ)
-    #         q_err_mats.append(q_err_mat)
-    #
-    #     title = "SARSA, eps: {}".format(e)
-    #
-    #     for q_m in q_err_mats:
-    #         plt.plot(range(n_epochs), q_m)
-    #
-    #     plt.title(title)
-    #     plt.xlabel("Epochs")
-    #     plt.ylabel("Q MSE")
-    #     plt.legend(["a = 0.01","a = 0.1","a = 0.3"])
-    #
-    #     plt.savefig("{}.png".format(title.replace(" ", "")), dpi=100)
-    #
-    #     q_err_mats = []
-    #
+    #Perform Sarsa algorithm
+    for i,e in enumerate(sarsa_eps):
+        plt.figure()
+
+        for a in sarsa_alpha:
+            Q, q_err_mat = SARSA(n_epochs, max_iters, a, e, optQ)
+            q_err_mats.append(q_err_mat)
+
+        title = "SARSA, eps: {}".format(e)
+
+        for j,q_m in enumerate(q_err_mats):
+            plt.plot(range(n_epochs), q_m)
+
+        plt.xlabel("Epochs")
+        plt.ylabel("Q MSE")
+        plt.legend(["a = 0.01","a = 0.1","a = 0.3"])
+
+        plt.savefig("{}.png".format(title.replace(" ", "")), dpi=100)
+
+        q_err_mats = []
+
+
+
+    print "Q-learning: "
 
     q_err_mats = []
 
@@ -290,20 +292,17 @@ def main():
 
         title = "Q-learning, eps: {}".format(e)
 
-        for q_m in q_err_mats:
+        for j, q_m in enumerate(q_err_mats):
             plt.plot(range(n_epochs), q_m)
 
         plt.title(title)
         plt.xlabel("Epochs")
         plt.ylabel("Q MSE")
-        plt.legend(["a = 0.01", "a = 0.1", "a = 0.3"])
+        plt.legend(["a = 0.1", "a = 0.5", "a = 1"])
 
         plt.savefig("{}.png".format(title.replace(" ", "")), dpi=100)
 
         q_err_mats = []
-
-    for q in q_err_mats:
-        print np.min(q)
 
 
     # Perform Policy iteration
