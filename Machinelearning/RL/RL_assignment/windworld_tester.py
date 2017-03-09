@@ -278,7 +278,7 @@ def main():
 
 
 
-    print "Q-learning:   "
+    print "Q-learning: "
 
     q_err_mats = []
 
