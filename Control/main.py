@@ -7,6 +7,7 @@ import scipy.linalg
 from scipy import signal
 import matplotlib.pyplot as plt
 from scipy.integrate import odeint
+import pygame
 
 def lqr(A, B, Q, R):
     """Solve the continuous time lqr controller.
@@ -117,7 +118,44 @@ def main():
     animate(simstate)
 
 def animate(simstate):
-    pass
+
+    # Get relevant states
+    x = simstate[:, 0]
+    y = simstate[:, 2]
+    theta = simstate[:, 4]
+
+    background_colour = (255, 255, 255)
+    screen = pygame.display.set_mode((200, 200))
+    pygame.display.set_caption('LQR landing')
+
+    clock = pygame.time.Clock()
+
+    ctr = 0
+    running = True
+    while running:
+        for event in pygame.event.get():
+            if event.type == pygame.QUIT:
+                running = False
+
+        # Fill screen
+        screen.fill(background_colour)
+
+
+        width = 30
+        height = 30
+
+        lander = pygame.Rect(x[ctr] - width/2.0,
+                          y[ctr] - height/2.0,
+                          x[ctr],
+                          y[ctr])
+
+        pygame.draw.rect(screen, (0, 0, 255), lander)
+        clock.tick(300)
+        pygame.display.flip()
+        ctr += 1
+
+        if ctr >= len(simstate):
+            break
 
 
 def lunarlander(z, t, F, params):
