@@ -107,8 +107,11 @@ def main():
     # Initial state
     x0 = [0, 0, 30, 0, 0, 0]
 
+    Fvec = None
+    params = m, c, g, r, J
+
     # Simulate non-linear system
-    simstate = odeint(lunarlander, x0, t)
+    simstate = odeint(lunarlander, x0, t, args=[Fvec, params])
 
     # Plot the simulation
     animate(simstate)
