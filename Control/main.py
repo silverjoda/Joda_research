@@ -4,7 +4,9 @@ from matplotlib.pyplot import *  # Grab MATLAB plotting functions
 from control.matlab import *  # MATLAB-like functions
 import numpy as np
 import scipy.linalg
-
+from scipy import signal
+import matplotlib.pyplot as plt
+from scipy.integrate import odeint
 
 def lqr(A, B, Q, R):
     """Solve the continuous time lqr controller.
@@ -66,40 +68,75 @@ def main():
 
     # Dynamics matrix (use matrix type so that * works for multiplication)
     A = matrix(
-        [[0, 0, 0, 1, 0, 0],
-         [0, 0, 0, 0, 1, 0],
+        [[0, 1, 0, 0, 0, 0],
+         [0, -c / m, 0, 0, (-ue[0] * sin(xe[4]) - ue[1] * cos(xe[4])) / m, 0],
+         [0, 0, 0, 1, 0, 0],
+         [0, 0, 0, -c / m, (-ue[0] * cos(xe[4]) - ue[1] * sin(xe[4])) / m, 0],
          [0, 0, 0, 0, 0, 1],
-         [0, 0, (-ue[0] * sin(xe[2]) - ue[1] * cos(xe[2])) / m, -c / m, 0, 0],
-         [0, 0, (ue[0] * cos(xe[2]) - ue[1] * sin(xe[2])) / m, 0, -c / m, 0],
          [0, 0, 0, 0, 0, 0]])
 
     # Input matrix
     B = matrix(
-        [[0, 0], [0, 0], [0, 0],
-         [cos(xe[2]) / m, -sin(xe[2]) / m],
-         [sin(xe[2]) / m, cos(xe[2]) / m],
+        [[0, 0],
+         [cos(xe[4]) / m, -sin(xe[4]) / m],
+         [0, 0],
+         [sin(xe[4]) / m, cos(xe[4]) / m],
+         [0, 0],
          [r / J, 0]])
+
 
     # Output matrix
     C = matrix([[1, 0, 0, 0, 0, 0], [0, 1, 0, 0, 0, 0]])
     D = matrix([[0, 0], [0, 0]])
 
-
     # Discretize the system:
     sys = ss(A,B,C,D)
     d_sys = sample_system(sys, Ts)
-
 
     # Weight matrices
     Q = np.eye(6)
     R = np.eye(2)
 
-
     # Solve LQR
     Kc, Xc, eigValsc = lqr(A, B, Q, R)
     Kd, Xd, eigValsd = dlqr(d_sys.A, d_sys.B, Q, R)
 
+    # Time vector
+    t = np.arange(0, 10, Ts)
 
+    # Initial state
+    x0 = [0, 0, 30, 0, 0, 0]
+
+    # Simulate non-linear system
+    simstate = odeint(lunarlander, x0, t)
+
+    # Plot the simulation
+    animate(simstate)
+
+def animate(simstate):
+    pass
+
+
+def lunarlander(z, t, F, params):
+
+    # Get parameters
+    m, c, g, r, J = params
+
+    # Get forces
+    (F1, F2) = F[t]
+
+    # Unpack states
+    z1 = z[0]; z2 = z[1]; z3 = z[2]; z4 = z[3]; z5 = z[4]; z6 = z[5]
+
+    # Define derivatives
+    z1d = z2
+    z2d = (F1 / m) * cos(z5) - (F2 / m) * sin(z5) - (c / m) * z2
+    z3d = z4
+    z4d = (F1 / m) * sin(z5) + (F2 / m) * cos(z5) - (c / m) * z4 - g
+    z5d = z6
+    z6d = (r/J)*F1
+
+    return [z1d, z2d, z3d, z4d, z5d, z6d]
 
 
 
