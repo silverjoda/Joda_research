@@ -1,9 +1,9 @@
 from copy import deepcopy
 from itertools import *
-
+import numpy as np
 
 class Node:
-    def __init__(self, action_sequence, newact, isleaf=False, value = -1):
+    def __init__(self, action_sequence, newact, isleaf=False, value = (0,0)):
         self.action_sequence = deepcopy(action_sequence)
         self.action_sequence.append(newact)
         self.value = value
@@ -42,8 +42,17 @@ class NFG:
     def _calculateNE(self):
         pass
 
-def RSPoutcome(p1a, p2d):
-    pass
+def RSPoutcome(p1a, p2a, s, c, actions):
+
+    assert actions == ('R','S','P','F')
+
+    valueMat = np.array([(c, c), (c + s, c - s), (c - s, c + s), (0, 0)],
+                        [(c - s, c + s), (c, c), (c + s, c - s), (0, 0)],
+                        [(c + s, c - s), (c - s, c + s), (c, c), (0, 0)],
+                        [(0, 0), (0, 0), (0, 0), (0, 0)])
+
+    return valueMat[actions.index(p1a),actions.index(p2a)]
+
 
 def makeGameTree(star_val, card_discard_val, actions, agreed_upon_sequence):
 
@@ -67,12 +76,18 @@ def makeGameTree(star_val, card_discard_val, actions, agreed_upon_sequence):
             if ap1 == ap2 and ap1 == agreed_upon_sequence[round]:
                 currentNode = Node(current_sequence,
                                    (ap1, ap2),
-                                   value=current_value + 1)
+                                   value=(current_value + 1, current_value + 1))
                 nodeList.append(currentNode)
             else:
                 # Defection
-                nodeList.append(Node(current_sequence, (ap1, ap2)))
-                pass
+                (vp1, vp2) = RSPoutcome(ap1, ap2)
+
+                nodeList.append(Node(current_sequence,
+                                     (ap1, ap2),
+                                     value=(
+                                     current_value + 1 + vp1,
+                                     current_value + 1 + vp2),
+                                     isleaf=True))
 
         # Both played agreed actions
         current_sequence.append((agreed_upon_sequence[i],
@@ -85,6 +100,7 @@ def makeGameTree(star_val, card_discard_val, actions, agreed_upon_sequence):
 
 def gameDFS(star_val, card_discard_val, actions, agreed_upon_sequence):
     pass
+
 
 def makeNFG(leafnodes):
     pass
