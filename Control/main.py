@@ -117,9 +117,9 @@ def main():
     #
     # simstate = np.zeros((amt, 6))
     # for i in range(amt):
-    #     simstate[i, 0] = amt - i # x
-    #     simstate[i, 2] = amt/2 - i / 2 # y
-    #     simstate[i, 4] = amt/4 - i/4 # theta
+    #     simstate[i, 0] = -i # x
+    #     simstate[i, 2] = i # y
+    #     simstate[i, 4] = i/4 # theta
     #
     # animate(simstate)
     #
@@ -198,27 +198,24 @@ def main():
     t = np.arange(0, 10, Ts)
 
     # Initial state
-    x0 = [0, 0, 30, 0, 0, 0]
+    x0 = [0, 0, 100, 0, 0, 0]
 
     Fvec = None
-    params = m, c, g, r, J, Kd
+    params = (m, c, g, r, J, Kd)
 
     # Simulate non-linear system
-    simstate = odeint(lunarlander, x0, t, args=[params])
+    simstate = odeint(lunarlander, x0, t, args=params)
 
     # Plot the simulation
     animate(simstate)
 
 
-def lunarlander(z, t, params):
-
-    # Get parameters
-    m, c, g, r, J, K = params
+def lunarlander(z, t, m, c, g, r, J, K):
 
     # Get forces
-    F = -K*z
-    F1 = F[0]
-    F2 = F[1]
+    F = np.dot(-K,z)
+    F1 = F[0,0]
+    F2 = F[0,1]
 
     # Unpack states
     z1 = z[0]; z2 = z[1]; z3 = z[2]; z4 = z[3]; z5 = z[4]; z6 = z[5]
