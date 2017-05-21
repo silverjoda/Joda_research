@@ -1,16 +1,13 @@
+from copy import deepcopy
+from itertools import *
 
-
-
-class SimultaneousAction:
-    def __init__(self):
-        self.P1_action = None
-        self.P2_action = None
 
 class Node:
-    def __init__(self, action_sequence):
-        self.action_sequence = action_sequence
-        self.value = -1
-        self.isleaf = False
+    def __init__(self, action_sequence, newact, isleaf=False, value = -1):
+        self.action_sequence = deepcopy(action_sequence)
+        self.action_sequence.append(newact)
+        self.value = value
+        self.isleaf = isleaf
 
 class BimatrixNE:
     def __init__(self, value, p1_seq, p2_seq):
@@ -45,12 +42,53 @@ class NFG:
     def _calculateNE(self):
         pass
 
-def makeGameTree(star_val, card_discard_val):
+def RSPoutcome(p1a, p2d):
     pass
 
+def makeGameTree(star_val, card_discard_val, actions, agreed_upon_sequence):
+
+    # All possible combinations of actions of both players
+    action_perms = [c for c in product(actions, repeat=2)]
+
+    # Make root node of tree with null sequence
+    root = Node([])
+    current_sequence = []
+    nodeList = []
+    round = 0
+    current_value = 0
+
+    # Go over the whole sequence
+    for i in range(agreed_upon_sequence):
+
+        # In each sequence enumerate all possible action combinations
+        for (ap1, ap2) in action_perms:
+
+            # Cooperation
+            if ap1 == ap2 and ap1 == agreed_upon_sequence[round]:
+                currentNode = Node(current_sequence,
+                                   (ap1, ap2),
+                                   value=current_value + 1)
+                nodeList.append(currentNode)
+            else:
+                # Defection
+                nodeList.append(Node(current_sequence, (ap1, ap2)))
+                pass
+
+        # Both played agreed actions
+        current_sequence.append((agreed_upon_sequence[i],
+                                 agreed_upon_sequence[i]))
+
+        current_value += 1
+
+    return nodeList
+
+
+def gameDFS(star_val, card_discard_val, actions, agreed_upon_sequence):
+    pass
 
 def makeNFG(leafnodes):
     pass
+
 
 def main():
 
@@ -59,9 +97,15 @@ def main():
     # Value parameters
     star_val = 3
     card_discard_val = 1
+    actions = ('R','S','P','F')
+    agreed_upon_sequence = ('R','R','R','R','P','P','P','P','S','S','S','S')
 
     # Make game tree
-    nodes = makeGameTree(star_val, card_discard_val)
+    nodes = makeGameTree(star_val,
+                         card_discard_val,
+                         actions,
+                         agreed_upon_sequence)
+
     leaves = [n for n in nodes if n.isleaf]
 
     # Make NFG out of all the outcomes
