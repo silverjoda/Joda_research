@@ -8,6 +8,7 @@ from scipy import signal
 import matplotlib.pyplot as plt
 from scipy.integrate import odeint
 import pygame
+import time
 
 def lqr(A, B, Q, R):
     """Solve the continuous time lqr controller.
@@ -51,7 +52,86 @@ def dlqr(A, B, Q, R):
 
 
 
+def animate(simstate):
+
+    # Get relevant states
+    x = simstate[:, 0]
+    y = simstate[:, 2]
+    theta = simstate[:, 4]
+
+    # Simulation parameters
+    window_width = 1024
+    window_height = 1024
+    background_colour = (255, 255, 255)
+    ground_height = 100
+
+    # Initialize scren
+    screen = pygame.display.set_mode((window_width, window_height))
+    pygame.display.set_caption('LQR landing')
+
+    # Sleep before starting simulations
+    time.sleep(0.3)
+
+    # Initialize frame clock
+    clock = pygame.time.Clock()
+
+    ctr = 0
+    running = True
+    while running:
+        for event in pygame.event.get():
+            if event.type == pygame.QUIT:
+                running = False
+
+        # Fill screen with background
+        screen.fill(background_colour)
+
+        # Add horizontal line denoting ground
+        pygame.draw.lines(screen, (0, 0, 0), False,
+                          [(0, window_height - 100),
+                           (window_width, window_height - 100)], 1)
+
+        width = 30
+        height = 30
+
+        lander = pygame.Rect(window_width/2 + (x[ctr] - width/2.0),
+                             window_height - (y[ctr] - height/2.0) -
+                             ground_height,
+                          width,
+                          height)
+
+        drawLander(window_width/2 + x[ctr],
+                  window_height - y[ctr] - ground_height,
+                  width, height, screen, (0,0,0))
+
+        #pygame.draw.rect(screen, (0, 0, 255), lander)
+        clock.tick(200)
+        pygame.display.flip()
+        ctr += 1
+
+        if ctr >= len(simstate):
+            break
+
+def drawLander(x, y, width, height, screen, color):
+    points = [(x,y- ((2/3.0) * height)), (x,y), (x+width,y), (x+width,y-(2/3.0) * height),
+        (x,y- ((2/3.0) * height)), (x + width/2.0,y-height), (x+width,y-(2/3.0)*height)]
+    lineThickness = 2
+    pygame.draw.lines(screen, color, False, points, lineThickness)
+
 def main():
+
+    amt = 400
+
+    simstate = np.zeros((amt, 6))
+    for i in range(amt):
+        simstate[i, 0] = amt - i # x
+        simstate[i, 2] = amt/2 - i / 2 # y
+        simstate[i, 4] = 0 # theta
+
+    animate(simstate)
+
+    time.sleep(1)
+    exit()
+
 
     # Timestep
     Ts = 0.01
@@ -99,7 +179,7 @@ def main():
     R = np.eye(2)
 
     # Solve LQR
-    Kc, Xc, eigValsc = lqr(A, B, Q, R)
+    #Kc, Xc, eigValsc = lqr(A, B, Q, R)
     Kd, Xd, eigValsd = dlqr(d_sys.A, d_sys.B, Q, R)
 
     # Time vector
@@ -117,45 +197,8 @@ def main():
     # Plot the simulation
     animate(simstate)
 
-def animate(simstate):
-
-    # Get relevant states
-    x = simstate[:, 0]
-    y = simstate[:, 2]
-    theta = simstate[:, 4]
-
-    background_colour = (255, 255, 255)
-    screen = pygame.display.set_mode((200, 200))
-    pygame.display.set_caption('LQR landing')
-
-    clock = pygame.time.Clock()
-
-    ctr = 0
-    running = True
-    while running:
-        for event in pygame.event.get():
-            if event.type == pygame.QUIT:
-                running = False
-
-        # Fill screen
-        screen.fill(background_colour)
 
 
-        width = 30
-        height = 30
-
-        lander = pygame.Rect(x[ctr] - width/2.0,
-                          y[ctr] - height/2.0,
-                          x[ctr],
-                          y[ctr])
-
-        pygame.draw.rect(screen, (0, 0, 255), lander)
-        clock.tick(300)
-        pygame.display.flip()
-        ctr += 1
-
-        if ctr >= len(simstate):
-            break
 
 
 def lunarlander(z, t, F, params):
