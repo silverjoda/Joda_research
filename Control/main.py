@@ -65,9 +65,12 @@ def animate(simstate):
     background_colour = (255, 255, 255)
     ground_height = 100
 
-    # Initialize scren
+    # Initialize screen
     screen = pygame.display.set_mode((window_width, window_height))
     pygame.display.set_caption('LQR landing')
+
+    landerImage = pygame.image.load("lander.png")
+    landerImage = pygame.transform.scale(landerImage, (100, 100))
 
     # Sleep before starting simulations
     time.sleep(0.3)
@@ -85,37 +88,46 @@ def animate(simstate):
         # Fill screen with background
         screen.fill(background_colour)
 
+        # Rotate lander accordingly
+        im, rec = rot_center(landerImage,
+                             landerImage.get_rect(),
+                             theta[ctr])
+
+        # Move lander to correct location
+        rec = rec.move((window_width / 2 + x[ctr] - 50,
+                        window_height - y[ctr] - ground_height - 83))
+
+        # Show lander on screen
+        screen.blit(im, rec)
+
         # Add horizontal line denoting ground
         pygame.draw.lines(screen, (0, 0, 0), False,
-                          [(0, window_height - 100),
-                           (window_width, window_height - 100)], 1)
+                          [(0, window_height - ground_height),
+                           (window_width, window_height - ground_height)], 2)
 
-        width = 30
-        height = 30
+        # Show 0 x position
+        pygame.draw.lines(screen, (255,0,0), False,
+                          [(window_width / 2,
+                            window_height - ground_height - 5),
+                           (window_width / 2,
+                            window_height - ground_height + 5)], 2)
 
-        lander = pygame.Rect(window_width/2 + (x[ctr] - width/2.0),
-                             window_height - (y[ctr] - height/2.0) -
-                             ground_height,
-                          width,
-                          height)
-
-        drawLander(window_width/2 + x[ctr],
-                  window_height - y[ctr] - ground_height,
-                  width, height, screen, (0,0,0))
-
-        #pygame.draw.rect(screen, (0, 0, 255), lander)
+        # FPS cl9ock
         clock.tick(200)
-        pygame.display.flip()
-        ctr += 1
 
+        # Redraw screen
+        pygame.display.flip()
+
+        # Count amount of frames
+        ctr += 1
         if ctr >= len(simstate):
             break
 
-def drawLander(x, y, width, height, screen, color):
-    points = [(x,y- ((2/3.0) * height)), (x,y), (x+width,y), (x+width,y-(2/3.0) * height),
-        (x,y- ((2/3.0) * height)), (x + width/2.0,y-height), (x+width,y-(2/3.0)*height)]
-    lineThickness = 2
-    pygame.draw.lines(screen, color, False, points, lineThickness)
+def rot_center(image, rect, angle):
+    """rotate an image while keeping its center"""
+    rot_image = pygame.transform.rotate(image, angle)
+    rot_rect = rot_image.get_rect(center=rect.center)
+    return rot_image, rot_rect
 
 def main():
 
@@ -125,7 +137,7 @@ def main():
     for i in range(amt):
         simstate[i, 0] = amt - i # x
         simstate[i, 2] = amt/2 - i / 2 # y
-        simstate[i, 4] = 0 # theta
+        simstate[i, 4] = amt/4 - i/4 # theta
 
     animate(simstate)
 
