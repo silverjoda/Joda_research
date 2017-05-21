@@ -188,17 +188,25 @@ def main():
     d_sys = sample_system(sys, Ts)
 
     # Weight matrices
-    Q = np.eye(6)
-    R = np.eye(2)
+    Q = np.array(
+        [[100, 0, 0, 0, 0, 0],
+         [0, 10, 0, 0, 0, 0],
+         [0, 0, 100, 0, 0, 0],
+         [0, 0, 0, 10, 0, 0],
+         [0, 0, 0, 0, 100, 0],
+         [0, 0, 0, 0, 0, 10]])
+
+    R = np.array([[10, 0],
+                  [0, 10]])
 
     # Solve LQR
     Kd, Xd, eigValsd = dlqr(Ad, Bd, Q, R)
 
     # Time vector
-    t = np.arange(0, 10, Ts)
+    t = np.arange(0, 15, Ts)
 
     # Initial state
-    x0 = [0, 0, 100, 0, 0, 0]
+    x0 = [-100, 50, 100, 0, 50, 0]
 
     Fvec = None
     params = (m, c, g, r, J, Kd)
