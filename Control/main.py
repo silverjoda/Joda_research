@@ -207,8 +207,6 @@ def main():
 
     # Initial state
     x0 = [0, 0, 300, 0, 0, 0]
-
-    Fvec = None
     params = (m, c, g, r, J, Kd)
 
     # Simulate non-linear system
@@ -222,8 +220,8 @@ def lunarlander(z, t, m, c, g, r, J, K):
 
     # Get forces
     F = np.dot(-K,z)
-    F1 = F[0,0]
-    F2 = F[0,1]
+    F1 = F[0,0] # Sideways thrust
+    F2 = F[0,1] # Main engine thrust
 
     # Unpack states
     z1 = z[0]; z2 = z[1]; z3 = z[2]; z4 = z[3]; z5 = z[4]; z6 = z[5]
