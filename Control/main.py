@@ -4,30 +4,9 @@ from matplotlib.pyplot import *  # Grab MATLAB plotting functions
 from control.matlab import *  # MATLAB-like functions
 import numpy as np
 import scipy.linalg
-from scipy import signal
-import matplotlib.pyplot as plt
 from scipy.integrate import odeint
 import pygame
 import time
-
-def lqr(A, B, Q, R):
-    """Solve the continuous time lqr controller.
-
-    dx/dt = A x + B u
-
-    cost = integral x.T*Q*x + u.T*R*u
-    """
-    # ref Bertsekas, p.151
-
-    # first, try to solve the ricatti equation
-    X = np.matrix(scipy.linalg.solve_continuous_are(A, B, Q, R))
-
-    # compute the LQR gain
-    K = np.matrix(scipy.linalg.inv(R) * (B.T * X))
-
-    eigVals, eigVecs = scipy.linalg.eig(A - B * K)
-
-    return K, X, eigVals
 
 
 def dlqr(A, B, Q, R):
@@ -122,6 +101,8 @@ def animate(simstate):
         if ctr >= len(simstate):
             break
 
+    time.sleep(1)
+
 
 def rot_center(image, rect, angle):
     """rotate an image while keeping its center"""
@@ -132,56 +113,75 @@ def rot_center(image, rect, angle):
 
 def main():
 
-    amt = 400
-
-    simstate = np.zeros((amt, 6))
-    for i in range(amt):
-        simstate[i, 0] = amt - i # x
-        simstate[i, 2] = amt/2 - i / 2 # y
-        simstate[i, 4] = amt/4 - i/4 # theta
-
-    animate(simstate)
-
-    time.sleep(1)
-    exit()
+    # amt = 400
+    #
+    # simstate = np.zeros((amt, 6))
+    # for i in range(amt):
+    #     simstate[i, 0] = amt - i # x
+    #     simstate[i, 2] = amt/2 - i / 2 # y
+    #     simstate[i, 4] = amt/4 - i/4 # theta
+    #
+    # animate(simstate)
+    #
+    # time.sleep(1)
+    # exit()
 
 
     # Timestep
     Ts = 0.01
 
     # System parameters
-    m = 4;  # mass of aircraft
-    J = 0.0475;  # inertia around pitch axis
-    r = 0.25;  # distance to center of force
-    g = 9.8;  # gravitational constant
-    c = 0.05;  # damping factor (estimated)
+    m = 4.0  # mass of aircraft
+    J = 0.0475  # inertia around pitch axis
+    r = 0.25  # distance to center of force
+    g = 9.8  # gravitational constant
+    c = 0.05  # damping factor (estimated)
 
     # State space dynamics
-    xe = [0, 0, 0, 0, 0, 0];  # equilibrium point of interest
-    ue = [0, m * g];  # (note these are lists, not matrices)
+    x, xd, y, yd, th, thd = [0, 0, 0, 0, 0, 0]  # equilibrium point of interest
+    xe = [0, 0, 0, 0, 0, 0]
+
+    ue = [0, m * g]  # (note these are lists, not matrices)
+    F1, F2 = ue
 
     # Dynamics matrix (use matrix type so that * works for multiplication)
-    A = matrix(
+    A = np.array(
         [[0, 1, 0, 0, 0, 0],
-         [0, -c / m, 0, 0, (-ue[0] * sin(xe[4]) - ue[1] * cos(xe[4])) / m, 0],
+         [0, -c / m, 0, 0, - (F1 * sin(th) + F2 * cos(th)) / m, 0],
          [0, 0, 0, 1, 0, 0],
-         [0, 0, 0, -c / m, (-ue[0] * cos(xe[4]) - ue[1] * sin(xe[4])) / m, 0],
+         [0, 0, 0, -c / m, (F1 * cos(th) - F2 * sin(th)) / m, 0],
          [0, 0, 0, 0, 0, 1],
          [0, 0, 0, 0, 0, 0]])
 
     # Input matrix
-    B = matrix(
+    B = np.array(
         [[0, 0],
-         [cos(xe[4]) / m, -sin(xe[4]) / m],
+         [cos(th) / m, -sin(th) / m],
          [0, 0],
-         [sin(xe[4]) / m, cos(xe[4]) / m],
+         [sin(th) / m, cos(th) / m],
          [0, 0],
          [r / J, 0]])
 
+    Ad = np.array(
+        [[1,0.009999,0,0,-0.00049,-1.633e-06],
+         [0,0.9999,0,0,-0.09799,-0.00049],
+         [0,0,1,0.009999,0,0],
+         [0,0,0,0.9999,0,0],
+         [0,0,0,0,1,0.01],
+         [0, 0, 0, 0, 0, 1]])
+
+    # Input matrix
+    Bd = np.array(
+        [[1.248e-05,0],
+         [0.002491,0],
+         [0,1.25e-05],
+         [0, 0.0025],
+         [0.0002632, 0],
+         [0.05263 , 0]])
 
     # Output matrix
-    C = matrix([[1, 0, 0, 0, 0, 0], [0, 1, 0, 0, 0, 0]])
-    D = matrix([[0, 0], [0, 0]])
+    C = np.array([[1, 0, 0, 0, 0, 0], [0, 1, 0, 0, 0, 0]])
+    D = np.array([[0, 0], [0, 0]])
 
     # Discretize the system:
     sys = ss(A,B,C,D)
@@ -192,8 +192,7 @@ def main():
     R = np.eye(2)
 
     # Solve LQR
-    #Kc, Xc, eigValsc = lqr(A, B, Q, R)
-    Kd, Xd, eigValsd = dlqr(d_sys.A, d_sys.B, Q, R)
+    Kd, Xd, eigValsd = dlqr(Ad, Bd, Q, R)
 
     # Time vector
     t = np.arange(0, 10, Ts)
