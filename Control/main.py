@@ -51,7 +51,6 @@ def dlqr(A, B, Q, R):
     return K, X, eigVals
 
 
-
 def animate(simstate):
 
     # Get relevant states
@@ -123,11 +122,13 @@ def animate(simstate):
         if ctr >= len(simstate):
             break
 
+
 def rot_center(image, rect, angle):
     """rotate an image while keeping its center"""
     rot_image = pygame.transform.rotate(image, angle)
     rot_rect = rot_image.get_rect(center=rect.center)
     return rot_image, rot_rect
+
 
 def main():
 
@@ -201,25 +202,24 @@ def main():
     x0 = [0, 0, 30, 0, 0, 0]
 
     Fvec = None
-    params = m, c, g, r, J
+    params = m, c, g, r, J, Kd
 
     # Simulate non-linear system
-    simstate = odeint(lunarlander, x0, t, args=[Fvec, params])
+    simstate = odeint(lunarlander, x0, t, args=[params])
 
     # Plot the simulation
     animate(simstate)
 
 
-
-
-
-def lunarlander(z, t, F, params):
+def lunarlander(z, t, params):
 
     # Get parameters
-    m, c, g, r, J = params
+    m, c, g, r, J, K = params
 
     # Get forces
-    (F1, F2) = F[t]
+    F = -K*z
+    F1 = F[0]
+    F2 = F[1]
 
     # Unpack states
     z1 = z[0]; z2 = z[1]; z3 = z[2]; z4 = z[3]; z5 = z[4]; z6 = z[5]
