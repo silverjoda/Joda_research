@@ -113,19 +113,6 @@ def rot_center(image, rect, angle):
 
 def main():
 
-    # amt = 400
-    #
-    # simstate = np.zeros((amt, 6))
-    # for i in range(amt):
-    #     simstate[i, 0] = -i # x
-    #     simstate[i, 2] = i # y
-    #     simstate[i, 4] = i/4 # theta
-    #
-    # animate(simstate)
-    #
-    # time.sleep(1)
-    # exit()
-
 
     # Timestep
     Ts = 0.01
@@ -138,45 +125,23 @@ def main():
     c = 0.05  # damping factor (estimated)
 
     # State space dynamics
-    x, xd, y, yd, th, thd = [0, 0, 0, 0, 0, 0]  # equilibrium point of interest
-
+    xe = [0, 0, 0, 0, 0, 0]
     ue = [0, m * g]  # (note these are lists, not matrices)
-    F1, F2 = ue
 
-    # Dynamics matrix (use matrix type so that * works for multiplication)
-    A = np.array(
-        [[0, 1, 0, 0, 0, 0],
-         [0, -c / m, 0, 0, - (F1 * sin(th) + F2 * cos(th)) / m, 0],
-         [0, 0, 0, 1, 0, 0],
-         [0, 0, 0, -c / m, (F1 * cos(th) - F2 * sin(th)) / m, 0],
+    A = matrix(
+        [[0, 0, 0, 1, 0, 0],
+         [0, 0, 0, 0, 1, 0],
          [0, 0, 0, 0, 0, 1],
+         [0, 0, (-ue[0] * sin(xe[2]) - ue[1] * cos(xe[2])) / m, -c / m, 0, 0],
+         [0, 0, (ue[0] * cos(xe[2]) - ue[1] * sin(xe[2])) / m, 0, -c / m, 0],
          [0, 0, 0, 0, 0, 0]])
 
     # Input matrix
-    B = np.array(
-        [[0, 0],
-         [cos(th) / m, -sin(th) / m],
-         [0, 0],
-         [sin(th) / m, cos(th) / m],
-         [0, 0],
+    B = matrix(
+        [[0, 0], [0, 0], [0, 0],
+         [cos(xe[2]) / m, -sin(xe[2]) / m],
+         [sin(xe[2]) / m, cos(xe[2]) / m],
          [r / J, 0]])
-
-    Ad = np.array(
-        [[1,0.009999,0,0,-0.00049,-1.633e-06],
-         [0,0.9999,0,0,-0.09799,-0.00049],
-         [0,0,1,0.009999,0,0],
-         [0,0,0,0.9999,0,0],
-         [0,0,0,0,1,0.01],
-         [0, 0, 0, 0, 0, 1]])
-
-    # Input matrix
-    Bd = np.array(
-        [[1.248e-05,0],
-         [0.002491,0],
-         [0,1.25e-05],
-         [0, 0.0025],
-         [0.0002632, 0],
-         [0.05263 , 0]])
 
     # Output matrix
     C = np.array([[1, 0, 0, 0, 0, 0], [0, 1, 0, 0, 0, 0]])
@@ -188,22 +153,18 @@ def main():
 
     # Weight matrices
     Q = np.array(
-        [[100, 0, 0, 0, 0, 0],
+        [[10, 0, 0, 0, 0, 0],
          [0, 10, 0, 0, 0, 0],
-         [0, 0, 1000, 0, 0, 0],
-         [0, 0, 0, 1000, 0, 0],
+         [0, 0, 10, 0, 0, 0],
+         [0, 0, 0, 10, 0, 0],
          [0, 0, 0, 0, 10, 0],
-         [0, 0, 0, 0, 0, 10]])
+         [0, 0, 0, 0, 0, 1000]])
 
-    R = np.array([[3, 0],
-                  [0, 10]])
+    R = np.array([[10, 0],
+                  [0, 100]])
 
     # Solve LQR
-    Kd, Xd, eigValsd = dlqr(Ad, Bd, Q, R)
-
-    #
-    # Kd = matrix([[0, 0, 0, 0, 0, 0],
-    #              [0, 0, 0, 0, 0, 0]])
+    Kd, Xd, eigValsd = dlqr(d_sys.A, d_sys.B, Q, R)
 
     # Time vector
     t = np.arange(0, 10, Ts)
@@ -221,20 +182,20 @@ def main():
 
 def lunarlander(z, t, m, c, g, r, J, K):
 
-    # Unpack states
-    z1, z2, z3, z4, z5, z6 = z
     # Get forces
-    F = np.dot(-K,z)
-
-    F1 = F[0,0] # Sideways thrust
+    F = np.dot(-K, z - np.array([z[0], z[1], 0, 0, 0, 0]))
+    F1 = F[0,0] + 0 # Sideways thrust
     F2 = F[0,1] + m*g # Main engine thrust
 
+    # Unpack states
+    z1, z2, z3, z4, z5, z6 = z
+
     # Define derivatives
-    z1d = z2
-    z2d = (F1 / m) * cos(z5) - (F2 / m) * sin(z5) - (c / m) * z2
-    z3d = z4
-    z4d = (F1 / m) * sin(z5) + (F2 / m) * cos(z5) - (c / m) * z4 - g
-    z5d = z6
+    z1d = z4
+    z2d = z5
+    z3d = z6
+    z4d = (F1 / m) * cos(z3) - (F2 / m) * sin(z3) - (c / m) * z4
+    z5d = (F1 / m) * sin(z3) + (F2 / m) * cos(z3) - (c / m) * z5 - g
     z6d = (r/J)*F1
 
     return [z1d, z2d, z3d, z4d, z5d, z6d]

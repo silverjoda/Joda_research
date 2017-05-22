@@ -103,7 +103,21 @@ def gameDFS(star_val, card_discard_val, actions, agreed_upon_sequence):
 
 
 def makeNFG(leafnodes):
-    pass
+
+    p1_actions = []
+    p2_actions = []
+
+    for l in leafnodes:
+
+        # Unzip
+        p1_act, p2_act = zip(*l.action_sequence)
+
+        # Add actions
+        p1_actions.append(p1_act)
+        p2_actions.append(p2_act)
+
+
+
 
 
 def main():
