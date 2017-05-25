@@ -63,21 +63,36 @@ class Game:
 
     def _maketree(self):
 
+        # Keep list of all nodes of tree
         self.nodeList = []
+
+        # Current action history
         history = []
+
+        # Currently available actions
         cur_acts = self.actions
+
+        # Current depth of the tree
         cur_depth = 0
 
+        # Current node
+        cur_node = Node(history, None, 0, cur_acts)
+
         # At most D games (we only branch once everytime)
-        for d in range(len(self.agreed_upon_sequence)):
+        while True:
 
             # All possible combinations of actions of both players
             action_perms = [c for c in product(cur_acts, repeat=2)]
 
             for a in action_perms:
+
+                # Make new node
                 currentNode = Node(history, a, cur_depth + 1,
                                    self._get_available_actions(cur_depth + 1),
                                    isleaf = False)
+
+                # Add node to list
+                self.nodeList.append(currentNode)
 
 
     def _get_available_actions(self, depth):
