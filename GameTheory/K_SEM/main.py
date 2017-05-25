@@ -3,22 +3,30 @@ from itertools import *
 import numpy as np
 
 class Node:
-    def __init__(self, action_sequence, newact, isleaf=False, value = (0,0)):
-        self.action_sequence = deepcopy(action_sequence)
-        self.action_sequence.append(newact)
+    def __init__(self, history, newact, depth, cur_acts,
+                 isleaf=False, value = (0,0)):
+
+        # Copy and append history
+        self.history = deepcopy(history)
+        self.history.append(newact)
+
+        # Get currently available actions
+        self.available_acts = cur_acts
+
+        # Current node depth
+        self.depth = depth
+
+        # Value of the node (Nash Equillibrium)
         self.value = value
+
+        # True if node finishes the game
         self.isleaf = isleaf
 
-class BimatrixNE:
-    def __init__(self, value, p1_seq, p2_seq):
-        self.value = value
-        self.p1_seq = p1_seq
-        self.p2_seq = p2_seq
+        # Nash equillibrium at this node
+        self.NE = None
 
-    def __str__(self):
-        return "Value: {} \n Player 1 sequences: {} \n Player 2 sequences: {}"\
-            .format(self.value, self.p1_seq, self.p2_seq)
-
+    def getNE(self):
+        pass
 
 class NFG:
     def __init__(self, action_sequences=None, game_matrix=None):
@@ -42,9 +50,43 @@ class NFG:
     def _calculateNE(self):
         pass
 
-def RSPoutcome(p1a, p2a, s, c, actions):
 
-    assert actions == ('R','S','P','F')
+class Game:
+    def __init__(self,actions,agreed_upon_sequence,star_val,card_discard_val):
+        self.actions = actions
+        self.agreed_upon_sequence = agreed_upon_sequence
+        self.star_val = star_val
+        self.card_discard_val = card_discard_val
+
+        # Make the game tree
+        self._maketree()
+
+    def _maketree(self):
+
+        self.nodeList = []
+        history = []
+        cur_acts = self.actions
+        cur_depth = 0
+
+        # At most D games (we only branch once everytime)
+        for d in range(len(self.agreed_upon_sequence)):
+
+            # All possible combinations of actions of both players
+            action_perms = [c for c in product(cur_acts, repeat=2)]
+
+            for a in action_perms:
+                currentNode = Node(history, a, cur_depth + 1,
+                                   self._get_available_actions(cur_depth + 1),
+                                   isleaf = False)
+
+
+    def _get_available_actions(self, depth):
+        return list(set(self.agreed_upon_sequence[depth:]))
+
+
+def RSPoutcome(p1a, p2a, s, c):
+
+    actions = ('R','S','P','F')
 
     valueMat = np.array([(c, c), (c + s, c - s), (c - s, c + s), (0, 0)],
                         [(c - s, c + s), (c, c), (c + s, c - s), (0, 0)],
@@ -98,28 +140,6 @@ def makeGameTree(star_val, card_discard_val, actions, agreed_upon_sequence):
     return nodeList
 
 
-def gameDFS(star_val, card_discard_val, actions, agreed_upon_sequence):
-    pass
-
-
-def makeNFG(leafnodes):
-
-    p1_actions = []
-    p2_actions = []
-
-    for l in leafnodes:
-
-        # Unzip
-        p1_act, p2_act = zip(*l.action_sequence)
-
-        # Add actions
-        p1_actions.append(p1_act)
-        p2_actions.append(p2_act)
-
-
-
-
-
 def main():
 
     # Make complete game tree to find all leaves ===========
@@ -127,22 +147,16 @@ def main():
     # Value parameters
     star_val = 3
     card_discard_val = 1
-    actions = ('R','S','P','F')
+    actions = ('R','S','P')
     agreed_upon_sequence = ('R','R','R','R','P','P','P','P','S','S','S','S')
 
-    # Make game tree
-    nodes = makeGameTree(star_val,
-                         card_discard_val,
-                         actions,
-                         agreed_upon_sequence)
+    # Make Game
+    game = Game(star_val, card_discard_val, actions, agreed_upon_sequence)
 
-    leaves = [n for n in nodes if n.isleaf]
+    exit()
 
-    # Make NFG out of all the outcomes
-    NFG = makeNFG(leaves)
-
-    # Calculate Nash EQ of the NFG which maximizes payoffs
-    NE = NFG.getNE()
+    # Find NE of whole tree by backwards induction
+    NE = NFG.BI()
 
     # Print info
     if NE is not None:

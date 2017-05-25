@@ -166,6 +166,8 @@ def main():
     # Solve LQR
     Kd, Xd, eigValsd = dlqr(d_sys.A, d_sys.B, Q, R)
 
+
+
     # Time vector
     t = np.arange(0, 10, Ts)
 

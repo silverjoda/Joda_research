@@ -186,43 +186,69 @@ def main():
     sys = ss(A,B,C,D)
     d_sys = sample_system(sys, Ts)
 
+
     # Weight matrices
     Q = np.array(
         [[100, 0, 0, 0, 0, 0],
-         [0, 10, 0, 0, 0, 0],
+         [0, 100, 0, 0, 0, 0],
          [0, 0, 1000, 0, 0, 0],
          [0, 0, 0, 1000, 0, 0],
-         [0, 0, 0, 0, 10, 0],
+         [0, 0, 0, 0, 1000, 0],
          [0, 0, 0, 0, 0, 10]])
 
-    R = np.array([[3, 0],
+    R = np.array([[100, 0],
                   [0, 10]])
 
     # Solve LQR
     Kd, Xd, eigValsd = dlqr(Ad, Bd, Q, R)
 
-    #
-    # Kd = matrix([[0, 0, 0, 0, 0, 0],
-    #              [0, 0, 0, 0, 0, 0]])
+    print eigValsd
 
     # Time vector
-    t = np.arange(0, 10, Ts)
+    t = np.arange(0, 15, Ts)
 
     # Initial state
-    x0 = [0, 0, 300, 0, 0, 0]
+    x0 = [10, 0, 0, 0, 0, 0]
     params = (m, c, g, r, J, Kd)
 
     # Simulate non-linear system
     simstate = odeint(lunarlander, x0, t, args=params)
 
     # Plot the simulation
-    animate(simstate)
+    #animate(simstate)
 
+    print getConvergenceTime(simstate, 0.05, Ts)
+
+
+
+    plotstate(t, simstate)
+
+
+
+def getConvergenceTime(simstate, eps, Ts):
+
+    c = np.all(simstate < eps, axis=(1))
+
+    for i in range(len(simstate)):
+        if c[i]:
+            return i*Ts
+
+
+
+
+
+def plotstate(t,simstate):
+    x, = plot(t, simstate[:, 0])
+    y, = plot(t, simstate[:, 2])
+    theta, = plot(t, simstate[:, 4])
+    legend([x, y, theta], ['x', 'y', 'theta'])
+    show()
 
 def lunarlander(z, t, m, c, g, r, J, K):
 
     # Unpack states
     z1, z2, z3, z4, z5, z6 = z
+
     # Get forces
     F = np.dot(-K,z)
 
