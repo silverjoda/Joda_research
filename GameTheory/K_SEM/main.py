@@ -3,12 +3,14 @@ from itertools import *
 import numpy as np
 
 class Node:
-    def __init__(self, history, newact, depth, cur_acts,
+    def __init__(self, history, newact, depth, cur_acts, predecessor,
                  isleaf=False, value = (0,0)):
 
         # Copy and append history
         self.history = deepcopy(history)
-        self.history.append(newact)
+
+        if newact is not None:
+            self.history.append(newact)
 
         # Get currently available actions
         self.available_acts = cur_acts
@@ -76,7 +78,7 @@ class Game:
         cur_depth = 0
 
         # Current node
-        cur_node = Node(history, None, 0, cur_acts)
+        cur_node = Node(history, None, 0, cur_acts, None)
 
         # At most D games (we only branch once everytime)
         while True:
@@ -87,12 +89,17 @@ class Game:
             for a in action_perms:
 
                 # Make new node
-                currentNode = Node(history, a, cur_depth + 1,
+                new_node = Node(history, a, cur_depth + 1,
                                    self._get_available_actions(cur_depth + 1),
+                                   cur_node,
                                    isleaf = False)
 
                 # Add node to list
-                self.nodeList.append(currentNode)
+                self.nodeList.append(new_node)
+
+            # Make current node the one which continues the game
+
+
 
 
     def _get_available_actions(self, depth):
