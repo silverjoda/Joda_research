@@ -74,7 +74,7 @@ class Game:
         # Currently available actions
         cur_acts = self.actions
 
-        # Current depth of the tree
+        # Current depth of the tree.
         cur_depth = 0
 
         # Current node
