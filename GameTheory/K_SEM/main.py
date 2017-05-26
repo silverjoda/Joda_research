@@ -88,16 +88,31 @@ class Game:
 
             for a in action_perms:
 
+                # Skip the part where we go to the next depth
+                if a == self.agreed_upon_sequence[cur_depth]:
+                    continue
+
                 # Make new node
                 new_node = Node(history, a, cur_depth + 1,
                                    self._get_available_actions(cur_depth + 1),
                                    cur_node,
-                                   isleaf = False)
+                                   isleaf = True)
 
                 # Add node to list
                 self.nodeList.append(new_node)
 
             # Make current node the one which continues the game
+            c_act = (self.agreed_upon_sequence[cur_depth], self.agreed_upon_sequence[cur_depth])
+
+            new_node = Node(history, c_act, cur_depth + 1,
+                            self._get_available_actions(cur_depth + 1),
+                            cur_node,
+                            isleaf=False)
+
+            if cur_depth == len(self.agreed_upon_sequence):
+                break
+
+            cur_depth += 1
 
 
 
@@ -116,50 +131,6 @@ def RSPoutcome(p1a, p2a, s, c):
                         [(0, 0), (0, 0), (0, 0), (0, 0)])
 
     return valueMat[actions.index(p1a),actions.index(p2a)]
-
-
-def makeGameTree(star_val, card_discard_val, actions, agreed_upon_sequence):
-
-    # All possible combinations of actions of both players
-    action_perms = [c for c in product(actions, repeat=2)]
-
-    # Make root node of tree with null sequence
-    root = Node([])
-    current_sequence = []
-    nodeList = []
-    round = 0
-    current_value = 0
-
-    # Go over the whole sequence
-    for i in range(agreed_upon_sequence):
-
-        # In each sequence enumerate all possible action combinations
-        for (ap1, ap2) in action_perms:
-
-            # Cooperation
-            if ap1 == ap2 and ap1 == agreed_upon_sequence[round]:
-                currentNode = Node(current_sequence,
-                                   (ap1, ap2),
-                                   value=(current_value + 1, current_value + 1))
-                nodeList.append(currentNode)
-            else:
-                # Defection
-                (vp1, vp2) = RSPoutcome(ap1, ap2)
-
-                nodeList.append(Node(current_sequence,
-                                     (ap1, ap2),
-                                     value=(
-                                     current_value + 1 + vp1,
-                                     current_value + 1 + vp2),
-                                     isleaf=True))
-
-        # Both played agreed actions
-        current_sequence.append((agreed_upon_sequence[i],
-                                 agreed_upon_sequence[i]))
-
-        current_value += 1
-
-    return nodeList
 
 
 def main():
