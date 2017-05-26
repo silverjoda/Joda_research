@@ -3,14 +3,11 @@ from itertools import *
 import numpy as np
 
 class Node:
-    def __init__(self, history, newact, depth, cur_acts, predecessor,
-                 isleaf=False, value = (0,0)):
+    def __init__(self, history, depth, cur_acts, predecessor,
+                 isleaf=False, value = None):
 
         # Copy and append history
         self.history = deepcopy(history)
-
-        if newact is not None:
-            self.history.append(newact)
 
         # Get currently available actions
         self.available_acts = cur_acts
@@ -78,7 +75,8 @@ class Game:
         cur_depth = 0
 
         # Current node
-        cur_node = Node(history, None, 0, cur_acts, None)
+        cur_node = Node(history, 0, cur_acts, None)
+        self.nodeList.append(cur_node)
 
         # At most D games (we only branch once everytime).
         while True:
@@ -89,11 +87,11 @@ class Game:
             for a in action_perms:
 
                 # Skip the part where we go to the next depth
-                if a == self.agreed_upon_sequence[cur_depth]:
+                if a[0] == a[1] and a[0] == self.agreed_upon_sequence[cur_depth]:
                     continue
 
                 # Make new node
-                new_node = Node(history, a, cur_depth + 1,
+                new_node = Node(history + [a], cur_depth + 1,
                                    self._get_available_actions(cur_depth + 1),
                                    cur_node,
                                    isleaf = True)
@@ -103,18 +101,19 @@ class Game:
 
             # Make current node the one which continues the game
             c_act = (self.agreed_upon_sequence[cur_depth], self.agreed_upon_sequence[cur_depth])
+            history.append(c_act)
 
-            new_node = Node(history, c_act, cur_depth + 1,
+            new_node = Node(history + [c_act], cur_depth + 1,
                             self._get_available_actions(cur_depth + 1),
                             cur_node,
                             isleaf=False)
 
-            if cur_depth == len(self.agreed_upon_sequence):
+            cur_node = new_node
+
+            if cur_depth == len(self.agreed_upon_sequence) - 1:
                 break
 
             cur_depth += 1
-
-
 
 
     def _get_available_actions(self, depth):
@@ -144,7 +143,7 @@ def main():
     agreed_upon_sequence = ('R','R','R','R','P','P','P','P','S','S','S','S')
 
     # Make Game
-    game = Game(star_val, card_discard_val, actions, agreed_upon_sequence)
+    game = Game(actions, agreed_upon_sequence,star_val, card_discard_val)
 
     exit()
 
