@@ -80,7 +80,7 @@ class Game:
         # Current node
         cur_node = Node(history, None, 0, cur_acts, None)
 
-        # At most D games (we only branch once everytime)
+        # At most D games (we only branch once everytime).
         while True:
 
             # All possible combinations of actions of both players
