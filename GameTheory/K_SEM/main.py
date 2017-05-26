@@ -3,8 +3,14 @@ from itertools import *
 import numpy as np
 
 class Node:
-    def __init__(self, history, prev_action, depth, cur_acts, predecessor,
+    def __init__(self, game, history, prev_action, depth, cur_acts, predecessor,
                  isleaf=False, value = None):
+
+        # Instance of game
+        self.game = game
+
+        # Node predecessor
+        self.predecessor = predecessor
 
         # Descendants of the node
         self.descendants = []
@@ -31,14 +37,22 @@ class Node:
         self.NE = None
 
     def getNE(self):
+
+        # Make game matrix
+        gm = {}
+
+        for a1 in self.available_acts:
+            for a2 in self.available_acts:
+                gm[a1,a2] = RSPoutcome(a1, a2, self.game.star_val, self.game.card_discard_val)
+
         if self.isleaf:
             return self._calculateNE()
         else:
             for n in self.descendants:
-                pass
+                gm[n.prev_action] += n.getNE[0]
 
     def _calculateNE(self):
-        pass
+        return [(0,0), []]
 
 class NFG:
     def __init__(self, action_sequences=None, game_matrix=None):
@@ -64,7 +78,7 @@ class NFG:
 
 
 class Game:
-    def __init__(self,actions,agreed_upon_sequence,star_val,card_discard_val):
+    def __init__(self, actions, agreed_upon_sequence, star_val, card_discard_val):
         self.actions = actions
         self.agreed_upon_sequence = agreed_upon_sequence
         self.star_val = star_val
@@ -104,7 +118,7 @@ class Game:
                     continue
 
                 # Make new node
-                new_node = Node(history, a, cur_depth + 1,
+                new_node = Node(self, history, a, cur_depth + 1,
                                    self._get_available_actions(cur_depth + 1),
                                    cur_node,
                                    isleaf = True)
@@ -119,7 +133,7 @@ class Game:
             c_act = (self.agreed_upon_sequence[cur_depth], self.agreed_upon_sequence[cur_depth])
             history.append(c_act)
 
-            new_node = Node(history, c_act, cur_depth + 1,
+            new_node = Node(self, history, c_act, cur_depth + 1,
                             self._get_available_actions(cur_depth + 1),
                             cur_node,
                             isleaf=False)
