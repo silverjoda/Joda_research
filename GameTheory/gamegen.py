@@ -25,7 +25,7 @@ def gengame():
 
 
 def genRandGame():
-    return np.random.randint(-10, 11, size=(2,2,2))
+    return np.random.randint(-10, 11, size=(2,2,2)).astype(np.float32)
 
 def noreg(game, iters):
 
@@ -56,7 +56,7 @@ def checkNE(u, noreg_cce, eps):
 
     # Calculate nash equillibrium from game
     pa = (u[1, 1, 1] - u[1, 1, 0]) / (u[1, 0, 0] - u[1, 1, 0] - u[1, 0, 1] + u[1, 1, 1])
-    pc = (u[0, 1, 1] - u[0, 1, 0]) / (u[0, 0, 0] - u[0, 1, 0] - u[0, 0, 1] + u[0, 1, 1])
+    pc = (u[0, 1, 1] - u[0, 0, 1]) / (u[0, 0, 0] - u[0, 0, 1] - u[0, 1, 0] + u[0, 1, 1])
 
     # Make NE strategy
     ne_p1_sup = np.array([pa, 1 - pa])
