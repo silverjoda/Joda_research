@@ -25,12 +25,12 @@ def gengame():
 
 
 def genRandGame():
-    return np.random.rand(-10,11, size=(2,2,2))
+    return np.random.randint(-10, 11, size=(2,2,2))
 
 def noreg(game, iters):
 
-    w1 = np.array([1,1])
-    w2 = np.array([1,1])
+    w1 = np.array([1.,1.])
+    w2 = np.array([1.,1.])
 
     state_counts = np.zeros((2,2))
 
@@ -55,8 +55,8 @@ def checkNE(u, noreg_cce, eps):
     p2_sup = np.sum(noreg_cce, 0)
 
     # Calculate nash equillibrium from game
-    pa = (u[1, 2, 2] - u[1, 2, 1]) / (u[1, 1, 1] - u[1, 2, 1] - u[1, 1, 2] + u[1, 2, 2])
-    pc = (u[0, 2, 2] - u[0, 2, 1]) / (u[0, 1, 1] - u[0, 2, 1] - u[0, 1, 2] + u[0, 2, 2])
+    pa = (u[1, 1, 1] - u[1, 1, 0]) / (u[1, 0, 0] - u[1, 1, 0] - u[1, 0, 1] + u[1, 1, 1])
+    pc = (u[0, 1, 1] - u[0, 1, 0]) / (u[0, 0, 0] - u[0, 1, 0] - u[0, 0, 1] + u[0, 1, 1])
 
     # Make NE strategy
     ne_p1_sup = np.array([pa, 1 - pa])
@@ -68,23 +68,28 @@ def checkNE(u, noreg_cce, eps):
 def main():
 
     eps = 0.001
+    iters = 0
 
     while True:
+
+        iters += 1
 
         # Generate random game
         game = genRandGame()
 
         # Get cce from noreg dynamics
-        noreg_cce = noreg(game)
+        noreg_cce = noreg(game, 1000)
 
         # Check whether game nash is same as found cce by no regret dynamics
         eps = 0.01
         res = checkNE(game, noreg_cce, eps)
 
         if not res:
-            print "Found game with NRD converging to CCE."
+            print "Found game with NRD converging to CCE after {} iters.".format(iters)
             print "Game matrices a: {}".format(game)
             break
+
+
 
 
 if __name__ == "__main__":
