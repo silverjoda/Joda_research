@@ -1,4 +1,3 @@
-
 import numpy as np
 import gurobipy as g
 
@@ -28,42 +27,59 @@ def gengame():
 def genRandGame():
     return np.random.rand(-10,11, size=(2,2,2))
 
+def noreg(game, iters):
 
-def noreg(game):
-
-    # gAtAonAonsAonAonoAonAonn weAon
     w1 = np.array([1,1])
     w2 = np.array([1,1])
 
-    states = []
+    state_counts = np.zeros((2,2))
 
     eps = .1
 
-    for _ in range(1000):
+    for _ in range(iters):
+
         a1 = np.random.choice(2, p=w1/np.sum(w1))
         a2 = np.random.choice(2, p=w2/np.sum(w2))
-        states.append((a1, a2))
+
+        state_counts[a1, a2] += 1
+
         w1 = w1*(1-eps)**game[0, :, a2]
         w2 = w2*(1-eps)**game[0, a1, :]
 
-    return states
+    return state_counts / float(iters)
 
-def checkNE(seqs):
-    pass
+def checkNE(u, noreg_cce, eps):
+
+    # Get marginal probabilities from cce
+    p1_sup = np.sum(noreg_cce, 1)
+    p2_sup = np.sum(noreg_cce, 0)
+
+    # Calculate nash equillibrium from game
+    pa = (u[1, 2, 2] - u[1, 2, 1]) / (u[1, 1, 1] - u[1, 2, 1] - u[1, 1, 2] + u[1, 2, 2])
+    pc = (u[0, 2, 2] - u[0, 2, 1]) / (u[0, 1, 1] - u[0, 2, 1] - u[0, 1, 2] + u[0, 2, 2])
+
+    # Make NE strategy
+    ne_p1_sup = np.array([pa, 1 - pa])
+    ne_p2_sup = np.array([pc, 1 - pc])
+
+    return np.linalg.norm(p1_sup - ne_p1_sup, 2) < eps and np.linalg.norm(p2_sup - ne_p2_sup, 2) < eps
+
 
 def main():
 
     eps = 0.001
 
     while True:
-        # Generate random game with different nash and CCE
+
+        # Generate random game
         game = genRandGame()
 
-        # Get state count from noregret game
-        states = noreg(game)
+        # Get cce from noreg dynamics
+        noreg_cce = noreg(game)
 
-        # Check whether sequence of states is NE
-        res = checkNE(states)
+        # Check whether game nash is same as found cce by no regret dynamics
+        eps = 0.01
+        res = checkNE(game, noreg_cce, eps)
 
         if not res:
             print "Found game with NRD converging to CCE."
