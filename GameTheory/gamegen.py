@@ -1,15 +1,14 @@
 import numpy as np
 import gurobipy as g
 
-#np.random.seed(1337)
+np.random.seed(1338)
 np.set_printoptions(precision=3, suppress=True)
 
 def genRandGame(shape=(3,3)):
-    return np.random.rand(-10, 11, (2,)+shape)
-    # return np.random.rand(2, shape[0], shape[1]) * 10 - 5
+    return np.random.randint(-4, 5, (2,)+shape)
+# return np.random.rand(2, shape[0], shape[1]) * 10 - 5
 
-
-def noreg(game):
+def noreg(game, eps):
 
     w1 = np.ones(game.shape[-2])
     w2 = np.ones(game.shape[-1])
@@ -21,7 +20,9 @@ def noreg(game):
 
     eps = .1
 
-    for i in range(10000):
+    cur_dist = np.zeros((game.shape[-2],game.shape[-1]))
+
+    for i in range(20000):
 
         p1 = w1/np.sum(w1)
         p2 = w2/np.sum(w2)
@@ -36,7 +37,7 @@ def noreg(game):
         w1 = (1-eps)**-norm_weights(u1)
         w2 = (1-eps)**-norm_weights(u2)
 
-    return state_distribution(states, game.shape[1:])
+    return state_distribution(states, game.shape[1:]), None
 
 
 def norm_weights(u):
@@ -80,7 +81,7 @@ def main():
 
     while True:
         # Generate random game with different nash and CCE
-        game = genRandGame(shape=(4,4))
+        game = genRandGame(shape=(3,3))
 
         # coordination game
         # game = np.array([[[3, 0, 0], [0, 2, 0], [0, 0, 1]],
@@ -90,18 +91,28 @@ def main():
         # game = np.array([[[1, 0, 0], [0, 1, 0], [0, 0, 1]],
         #                  [[0, 1, 0], [0, 0, 1], [1, 0, 0]]])
 
+        eps = 0.00001
 
         # Get state count from noregret game
-        sigma = noreg(game)
+        sigma, iters = noreg(game, eps)
 
         # Check whether sequence of states is NE
         res, p1, p2 = better_than_ne(game, sigma)
 
+        print 'Mat a: '
+        print game[0]
+
+        print 'Mat b: '
+        print game[1]
+
+        print 'Strat p1: '
+        print np.sum(sigma, 1)
+
+        print 'Strat p2: '
+        print np.sum(sigma, 0)
+
         if np.max(sigma) > 0.99:
             print 'pure'
-            # TODO: fix pure
-        # else:
-        #     print 'not pure:', p1, p2
 
         if res:
             print "Found game with NRD converging to CCE!=NE."
@@ -111,6 +122,8 @@ def main():
             break
 
         print '---------------------'
+
+        exit()
 
 
 if __name__ == "__main__":

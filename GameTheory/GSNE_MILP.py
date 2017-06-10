@@ -1,11 +1,14 @@
 import numpy as np
 import gurobipy as g
 
-a = np.matrix([[2, 1],
-               [1, 4]])
 
-b = np.matrix([[-2, 3],
-               [-3, 2]])
+a = np.random.randint(-4,4,size=(2,2))
+b = np.random.randint(-4,4,size=(2,2))
+
+print 'a: '
+print a
+print 'b: '
+print b
 
 M, N = a.shape
 
