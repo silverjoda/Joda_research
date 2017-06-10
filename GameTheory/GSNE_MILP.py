@@ -31,12 +31,12 @@ v = m.addVar(lb=-Z, ub=Z, vtype=g.GRB.CONTINUOUS)
 
 for i in range(M):
     x[i] = m.addVar(lb=0, ub=1, vtype=g.GRB.CONTINUOUS)
-    p[i] = m.addVar(lb=0, vtype=g.GRB.CONTINUOUS)
+    p[i] = m.addVar(lb=0, ub=g.GRB.INFINITY, vtype=g.GRB.CONTINUOUS)
     w[i] = m.addVar(vtype=g.GRB.BINARY)
 
 for j in range(N):
     y[j] = m.addVar(lb=0, ub=1, vtype=g.GRB.CONTINUOUS)
-    q[j] = m.addVar(lb=0, vtype=g.GRB.CONTINUOUS)
+    q[j] = m.addVar(lb=0, ub=g.GRB.INFINITY, vtype=g.GRB.CONTINUOUS)
     z[j] = m.addVar(vtype=g.GRB.BINARY)
 
 # Update variables
@@ -57,6 +57,7 @@ for j in range(N):
     m.addConstr(z[j], g.GRB.GREATER_EQUAL, y[j])
     m.addConstr(q[j], g.GRB.LESS_EQUAL, (1 - z[j]) * Z)
 
+# Probabilities should sum to 1
 m.addConstr(g.quicksum(x[i] for i in range(M)), g.GRB.EQUAL, 1)
 m.addConstr(g.quicksum(y[j] for j in range(N)), g.GRB.EQUAL, 1)
 
