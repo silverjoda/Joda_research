@@ -66,6 +66,13 @@ m.addConstr(g.quicksum(y[j] for j in range(N)), g.GRB.EQUAL, 1)
 # Solve
 m.optimize()
 
+if m.status == g.GRB.INFEASIBLE:
+    m.computeIIS()
+    m.write("model.ilp")
+    print "Model is infeasible, exiting..."
+    exit()
+
+
 # Info
 print "Value u for player 1: {}".format(u.x)
 print "Strategy support for player 1: {}".format([x[i].x for i in range(M)])
