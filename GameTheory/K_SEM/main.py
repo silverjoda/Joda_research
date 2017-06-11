@@ -1,6 +1,7 @@
 from copy import deepcopy
 from itertools import *
 import numpy as np
+from NEGameCalc import *
 
 class Node:
     def __init__(self, game, history, prev_action, depth, cur_acts, predecessor,
@@ -16,7 +17,8 @@ class Node:
         self.descendants = []
 
         # Copy and append history
-        self.history = deepcopy(history + prev_action)
+        if prev_action is not None or prev_action != []:
+            self.history = deepcopy(history + [prev_action])
 
         # Last action
         self.prev_action = prev_action
@@ -49,7 +51,7 @@ class Node:
             return self._calculateNE()
         else:
             for n in self.descendants:
-                gm[n.prev_action] += n.getNE[0]
+                gm[n.prev_action[0], n.prev_action[1]] += n.getNE[0]
 
     def _calculateNE(self):
         return [(0,0), []]
@@ -102,7 +104,7 @@ class Game:
         cur_depth = 0
 
         # Current node
-        cur_node = Node(history, 0, cur_acts, None)
+        cur_node = Node(self, history, [], 0, cur_acts, None)
         self.nodeList.append(cur_node)
 
         # At most D games (we only branch once everytime).
@@ -114,7 +116,7 @@ class Game:
             for a in action_perms:
 
                 # Skip the part where we go to the next depth
-                if a[0] == a[1] and a[0] == self.agreed_upon_sequence[cur_depth]:
+                if a[0] == a[1] == self.agreed_upon_sequence[cur_depth]:
                     continue
 
                 # Make new node
@@ -131,8 +133,8 @@ class Game:
 
             # Make current node the one which continues the game
             c_act = (self.agreed_upon_sequence[cur_depth], self.agreed_upon_sequence[cur_depth])
-            history.append(c_act)
 
+            # Make new node
             new_node = Node(self, history, c_act, cur_depth + 1,
                             self._get_available_actions(cur_depth + 1),
                             cur_node,
@@ -140,9 +142,14 @@ class Game:
 
             cur_node = new_node
 
+            # Append latest action to history
+            history.append(c_act)
+
+            # Terminate if we played the whole sequence
             if cur_depth == len(self.agreed_upon_sequence) - 1:
                break
 
+            # Increment depth counter
             cur_depth += 1
 
 
@@ -164,6 +171,7 @@ def RSPoutcome(p1a, p2a, s, c):
 
 def main():
 
+
     # Make complete game tree to find all leaves ===========
 
     # Value parameters
@@ -173,7 +181,7 @@ def main():
     agreed_upon_sequence = ('R','R','R','R','P','P','P','P','S','S','S','S')
 
     # Make Game
-    game = Game(actions, agreed_upon_sequence,star_val, card_discard_val)
+    game = Game(actions, agreed_upon_sequence, star_val, card_discard_val)
 
     exit()
 
