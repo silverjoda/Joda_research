@@ -38,45 +38,35 @@ class Node:
         # Nash equillibrium at this node
         self.NE = None
 
-    def getNE(self):
+    def calcNE(self):
 
-        # Make game matrix
-        gm = {}
-
-        for a1 in self.available_acts:
-            for a2 in self.available_acts:
-                gm[a1,a2] = RSPoutcome(a1, a2, self.game.star_val, self.game.card_discard_val)
-
-        if self.isleaf:
-            return self._calculateNE()
-        else:
-            for n in self.descendants:
-                gm[n.prev_action[0], n.prev_action[1]] += n.getNE[0]
-
-    def _calculateNE(self):
-        return [(0,0), []]
-
-class NFG:
-    def __init__(self, action_sequences=None, game_matrix=None):
-        self.game_matrix = game_matrix
-        self.action_sequences = action_sequences
-
-        self.NE = None
-
-        # Make NFG matrix from the sequences
-        if self.game_matrix is None and self.action_sequences is not None:
-            pass
-
-    def getNE(self):
         if self.NE is not None:
             return self.NE
-        else:
-            # Calculate
-            self.NE = self._calculateNE()
+
+        # Calculate game matrixes
+        a, b = self.game.getGameMatrix()
+
+        if self.isleaf:
+            self.NE = calcNE(a,b)
             return self.NE
+        else:
+            for n in self.descendants:
+
+                n.NE = n.calcNE()
+
+                a[n.prev_action[0], n.prev_action[1]] += n.NE[0]
+                b[n.prev_action[0], n.prev_action[1]] += n.NE[1]
+
+
+        return self.NE
 
     def _calculateNE(self):
-        pass
+
+        # Calculate game matrixes
+        a,b = self.game.getGameMatrix()
+
+        # Calculate NE using ILP
+        return calcNE(a,b)
 
 
 class Game:
@@ -106,6 +96,7 @@ class Game:
         # Current node
         cur_node = Node(self, history, [], 0, cur_acts, None)
         self.nodeList.append(cur_node)
+        self.root = cur_node
 
         # At most D games (we only branch once everytime).
         while True:
@@ -140,6 +131,12 @@ class Game:
                             cur_node,
                             isleaf=False)
 
+            # Add node to list
+            self.nodeList.append(new_node)
+
+            # Add node,action pair to descendants
+            cur_node.descendants.append(new_node)
+
             cur_node = new_node
 
             # Append latest action to history
@@ -152,19 +149,50 @@ class Game:
             # Increment depth counter
             cur_depth += 1
 
-
     def _get_available_actions(self, depth):
         return list(set(self.agreed_upon_sequence[depth:]))
+
+    def getNE(self):
+
+        NEseq = []
+
+        for n in self.nodeList:
+            # Append only the actions
+            NEseq.append((n.calcNE()[2],n.calcNE()[3]))
+
+            # If deviation at this point then consider game finished
+            if n.calcNE != n.calcNE():
+                break
+
+        # Return whole NE sequence and value at root node
+        return NEseq, self.root.calcNE()[1]
+
+    def getGameMatrix(self):
+
+        a = np.zeros((len(self.actions), len(self.actions)))
+        b = np.zeros_like(a)
+
+        for i in range(len(self.actions)):
+            for j in range(len(self.actions)):
+                u,v = RSPoutcome(('R','S','P','F')[i],
+                                    ('R','S','P','F')[j],
+                                    self.star_val,
+                                    self.card_discard_val)
+
+                a[i, j] = u
+                b[i, j] = v
+
+        return a, b
 
 
 def RSPoutcome(p1a, p2a, s, c):
 
     actions = ('R','S','P','F')
 
-    valueMat = np.array([(c, c), (c + s, c - s), (c - s, c + s), (0, 0)],
+    valueMat = np.array([[(c, c), (c + s, c - s), (c - s, c + s), (0, 0)],
                         [(c - s, c + s), (c, c), (c + s, c - s), (0, 0)],
                         [(c + s, c - s), (c - s, c + s), (c, c), (0, 0)],
-                        [(0, 0), (0, 0), (0, 0), (0, 0)])
+                        [(0, 0), (0, 0), (0, 0), (0, 0)]])
 
     return valueMat[actions.index(p1a),actions.index(p2a)]
 
@@ -183,10 +211,10 @@ def main():
     # Make Game
     game = Game(actions, agreed_upon_sequence, star_val, card_discard_val)
 
-    exit()
-
     # Find NE of whole tree by backwards induction
-    NE = NFG.BI()
+    NE = game.getNE()
+
+    exit()
 
     # Print info
     if NE is not None:
