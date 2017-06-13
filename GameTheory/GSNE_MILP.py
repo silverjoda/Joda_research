@@ -2,10 +2,13 @@ import numpy as np
 import gurobipy as g
 
 utrange = 10
-gamesize = 100
+gamesize = 30
 
 a = np.random.randint(-utrange,utrange,size=(gamesize,gamesize))
 b = np.random.randint(-utrange,utrange,size=(gamesize,gamesize))
+
+#a = utrange*np.random.rand(gamesize,gamesize)
+#b = utrange*np.random.rand(gamesize,gamesize)
 
 print 'a: '
 print a
@@ -28,8 +31,8 @@ z = {}
 # Big Z
 Z = np.sum([np.abs(a), np.abs(b)])
 
-u = m.addVar(lb=-Z, ub=Z, vtype=g.GRB.CONTINUOUS, name='u')
-v = m.addVar(lb=-Z, ub=Z, vtype=g.GRB.CONTINUOUS, name='v')
+u = m.addVar(lb=-Z, ub=Z, vtype=g.GRB.CONTINUOUS, name='u', obj=1)
+v = m.addVar(lb=-Z, ub=Z, vtype=g.GRB.CONTINUOUS, name='v', obj=1)
 
 for i in range(M):
     x[i] = m.addVar(lb=0, ub=1, vtype=g.GRB.CONTINUOUS, name="x{}".format(i))
@@ -64,7 +67,7 @@ m.addConstr(g.quicksum(x[i] for i in range(M)), g.GRB.EQUAL, 1)
 m.addConstr(g.quicksum(y[j] for j in range(N)), g.GRB.EQUAL, 1)
 
 # Set objective if general sum game
-# m.setObjective()
+#m.setObjective()
 
 
 
