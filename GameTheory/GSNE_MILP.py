@@ -1,9 +1,11 @@
 import numpy as np
 import gurobipy as g
 
+utrange = 10
+gamesize = 100
 
-a = np.random.randint(-4,4,size=(2,2))
-b = np.random.randint(-4,4,size=(2,2))
+a = np.random.randint(-utrange,utrange,size=(gamesize,gamesize))
+b = np.random.randint(-utrange,utrange,size=(gamesize,gamesize))
 
 print 'a: '
 print a
@@ -24,34 +26,34 @@ w = {}
 z = {}
 
 # Big Z
-Z = 1000
+Z = np.sum([np.abs(a), np.abs(b)])
 
-u = m.addVar(lb=-Z, ub=Z, vtype=g.GRB.CONTINUOUS)
-v = m.addVar(lb=-Z, ub=Z, vtype=g.GRB.CONTINUOUS)
+u = m.addVar(lb=-Z, ub=Z, vtype=g.GRB.CONTINUOUS, name='u')
+v = m.addVar(lb=-Z, ub=Z, vtype=g.GRB.CONTINUOUS, name='v')
 
 for i in range(M):
-    x[i] = m.addVar(lb=0, ub=1, vtype=g.GRB.CONTINUOUS)
-    p[i] = m.addVar(lb=0, ub=g.GRB.INFINITY, vtype=g.GRB.CONTINUOUS)
-    w[i] = m.addVar(vtype=g.GRB.BINARY)
+    x[i] = m.addVar(lb=0, ub=1, vtype=g.GRB.CONTINUOUS, name="x{}".format(i))
+    p[i] = m.addVar(lb=0, ub=g.GRB.INFINITY, vtype=g.GRB.CONTINUOUS, name="p{}".format(i))
+    w[i] = m.addVar(vtype=g.GRB.BINARY, name="w{}".format(i))
 
 for j in range(N):
-    y[j] = m.addVar(lb=0, ub=1, vtype=g.GRB.CONTINUOUS)
-    q[j] = m.addVar(lb=0, ub=g.GRB.INFINITY, vtype=g.GRB.CONTINUOUS)
-    z[j] = m.addVar(vtype=g.GRB.BINARY)
+    y[j] = m.addVar(lb=0, ub=1, vtype=g.GRB.CONTINUOUS, name="y{}".format(i))
+    q[j] = m.addVar(lb=0, ub=g.GRB.INFINITY, vtype=g.GRB.CONTINUOUS, name="q{}".format(i))
+    z[j] = m.addVar(vtype=g.GRB.BINARY, name="z{}".format(i))
 
 # Update variables
 m.update()
 
 # Add constraints
 for i in range(M):
-    m.addConstr(g.quicksum([a[i,j] * y[j] + q[j] for j in range(N)]) ,
+    m.addConstr(g.quicksum([a[i,j] * y[j] + q[i] for j in range(N)]) ,
                 g.GRB.EQUAL, u)
 
     m.addConstr(w[i], g.GRB.GREATER_EQUAL, x[i])
     m.addConstr(p[i], g.GRB.LESS_EQUAL, (1 - w[i]) * Z)
 
 for j in range(N):
-    m.addConstr(g.quicksum([b[i,j] * x[i] + p[i] for i in range(M)]) ,
+    m.addConstr(g.quicksum([b[i,j] * x[i] + p[j] for i in range(M)]) ,
                 g.GRB.EQUAL, v)
 
     m.addConstr(z[j], g.GRB.GREATER_EQUAL, y[j])
@@ -64,8 +66,11 @@ m.addConstr(g.quicksum(y[j] for j in range(N)), g.GRB.EQUAL, 1)
 # Set objective if general sum game
 # m.setObjective()
 
+
+
 # Solve
 m.optimize()
+
 
 if m.status == g.GRB.INFEASIBLE:
     m.computeIIS()
