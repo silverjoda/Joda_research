@@ -42,8 +42,8 @@ a, b = getGameMatrix()
 auxmat = np.zeros((4,4))
 auxmat[1,1] = 3
 
-a += auxmat
-b += auxmat
+# a += auxmat
+# b += auxmat
 
 print 'a: '
 print a

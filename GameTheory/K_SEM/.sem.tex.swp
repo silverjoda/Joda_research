@@ -100,7 +100,34 @@ w_i, z_j \in \{0,1\}, \ w_i \geq x_i \geq 0, \ z_i \geq y_i \geq 0 \ \ \ \ \fora
 \end{equation} \\
 
 One of the advantages of this formulation is the generality of it and the ability to add any objective function of our choosing. 
-Since we are working working constant sum games, we do not have to add an objective, because we know that there is a unique NE, but adding a simple objective such as $min(-(u+v))$ for a General sum game can enable us to find a NE that maximizes social warfare. 
+Since we are working working constant sum games, we do not have to add an objective, because we know that there is a unique NE, but adding a simple objective such as $min(-(u+v))$ for a General sum game can enable us to find a NE that maximizes social warfare. \\
+This formulation can find some NE for random games as large as $1000 \times 1000$ almost instantly, but take a few minutes to find a NE with an objective function on random games with size larger than $50 \times 50$ which is not a surprise since finding NE in a general sum game is PPAD complete. 
+
+\section{Results and discussion}
+Before running the game and performing further analysis, we can first take a closer look at our initial stage game to analyze what happens there at different scenarios. Below is a concrete example of our modified Roshambo stage game $G$: \\
+
+\vspace{2mm}
+
+\begin{table}[htb]
+\begin{tabular}{cc|c|c|c|c|}
+  & \multicolumn{1}{c}{} & \multicolumn{4}{c}{P2} \\
+  & \multicolumn{1}{c}{} & \multicolumn{1}{c}{$R$}  & \multicolumn{1}{c}{$S$}  & \multicolumn{1}{c}{$P$}  & \multicolumn{1}{c}{$F$}\\\cline{3-6}
+            & $R$ & $(1,1)$ & $(4,-2)$ & $(-2,4)$ & $(0,0)$ \\ \cline{3-6}
+P1          & $S$ & $(-2,4)$ & $(1,1)$ & $(4,-2)$& $(0,0)$ \\\cline{3-6}
+            & $P$ & $(4,-2)$ & $(-2,4)$ & $(1,1)$ & $(0,0)$ \\\cline{3-6}
+            & $F$ & $(0,0)$ & $(0,0)$ & $(0,0)$ & $(0,0)$ \\\cline{3-6}
+\end{tabular}
+\end{table}
+
+It is well known that the NE in this kind of game is to play our three actions (we ignore the fold action) with uniform probability, that is:
+$\sigma_a = \sigma_b = (1/3,1/3,1/3)$. The value for both players in this case is 1. We ask ourselves how much we have to modify this game to achieve a pure NE. Particularly we are interested in strategies where both players play the same card, so we are interested in the values lying on the diagonal of the matrix. Let us look at entry (0,0) where both players play Rock. It turns out, that as we raise the value for both players at entry (0,0),  the strategy still remains close to random uniform, with the value for both players hovering slightly above 1. It is only when the diagonal entries as at least as large as the largest payoff that the players can get in the whole game, that we get a sudden change of strategy. This demonstrates the sensitivity of the NE to even the slightest changes in payoff. A payoff of 4 on the diagonal results in a pure strategy of (R,R) and a value of 4 for both players, but if we even slightly lower the payoff by epsilon, the strategy suddenly changes to a spread mixed strategy and the value for both players drops by a factor of almost 3. 
+
+\vspace{2mm}
+
+The above result hints that in the repeated game we will probably have a result where either the whole sequence is followed, or we get a mixed strategy at the very first node. Indeed using a variety of values we could not get a situation where the players cooperated up to a certain point and then decided to stop, or deviate.\\
+We ran the game for a variety of values $s$ and $c$ to observe the equillibrium strategies of the players at each stage of the game. Below is a plot of some combinations of variables with the shaded region denoting the values at which it was profitable for both players to stick to the agreed sequence throughout the whole game. 
+
+
 
 
 
