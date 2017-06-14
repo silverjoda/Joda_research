@@ -1,7 +1,7 @@
 import numpy as np
 import gurobipy as g
 
-def calcNE(a, b):
+def calcILPNE(a, b):
     '''
 
     Parameters
@@ -49,14 +49,14 @@ def calcNE(a, b):
 
     # Add constraints
     for i in range(M):
-        m.addConstr(g.quicksum([a[i,j] * y[j] + q[j] for j in range(N)]) ,
+        m.addConstr(g.quicksum([a[i,j] * y[j] + q[i] for j in range(N)]) ,
                     g.GRB.EQUAL, u)
 
         m.addConstr(w[i], g.GRB.GREATER_EQUAL, x[i])
         m.addConstr(p[i], g.GRB.LESS_EQUAL, (1 - w[i]) * Z)
 
     for j in range(N):
-        m.addConstr(g.quicksum([b[i,j] * x[i] + p[i] for i in range(M)]) ,
+        m.addConstr(g.quicksum([b[i,j] * x[i] + p[j] for i in range(M)]) ,
                     g.GRB.EQUAL, v)
 
         m.addConstr(z[j], g.GRB.GREATER_EQUAL, y[j])

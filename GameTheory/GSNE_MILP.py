@@ -2,7 +2,7 @@ import numpy as np
 import gurobipy as g
 
 utrange = 10
-gamesize = 30
+gamesize = 50
 
 a = np.random.randint(-utrange,utrange,size=(gamesize,gamesize))
 b = np.random.randint(-utrange,utrange,size=(gamesize,gamesize))

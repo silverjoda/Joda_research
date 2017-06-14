@@ -38,35 +38,32 @@ class Node:
         # Nash equillibrium at this node
         self.NE = None
 
-    def calcNE(self):
+    def getNE(self):
 
-        if self.NE is not None:
-            return self.NE
+        if self.NE is not None: return self.NE
 
-        # Calculate game matrixes
+        # Calculate game matrices
         a, b = self.game.getGameMatrix()
 
-        if self.isleaf:
-            self.NE = calcNE(a,b)
-            return self.NE
-        else:
-            for n in self.descendants:
+        for n in self.descendants:
 
-                n.NE = n.calcNE()
+            if n.isleaf:
+                continue
 
-                a[n.prev_action[0], n.prev_action[1]] += n.NE[0]
-                b[n.prev_action[0], n.prev_action[1]] += n.NE[1]
+            # Get nash equillibrium of descendant
+            NE = n.getNE()
 
+            # Actions to indeces
+            actionA = actTonum(n.prev_action[0])
+            actionB = actTonum(n.prev_action[1])
+
+            a[actionA, actionB] += NE[0]
+            b[actionA, actionB] += NE[1]
+
+        self.NE = calcILPNE(a,b)
 
         return self.NE
 
-    def _calculateNE(self):
-
-        # Calculate game matrixes
-        a,b = self.game.getGameMatrix()
-
-        # Calculate NE using ILP
-        return calcNE(a,b)
 
 
 class Game:
@@ -158,14 +155,14 @@ class Game:
 
         for n in self.nodeList:
             # Append only the actions
-            NEseq.append((n.calcNE()[2],n.calcNE()[3]))
+            NEseq.append((n.getNE()[2], n.getNE()[3]))
 
             # If deviation at this point then consider game finished
-            if n.calcNE != n.calcNE():
+            if np.max(n.getNE()[2]) < 0.99 or np.max(n.getNE()[3]) < 0.99:
                 break
 
         # Return whole NE sequence and value at root node
-        return NEseq, self.root.calcNE()[1]
+        return NEseq, self.root.getNE()[1]
 
     def getGameMatrix(self):
 
@@ -184,6 +181,9 @@ class Game:
 
         return a, b
 
+def actTonum(act):
+    actions = ('R', 'S', 'P', 'F')
+    return actions.index(act)
 
 def RSPoutcome(p1a, p2a, s, c):
 
@@ -198,7 +198,6 @@ def RSPoutcome(p1a, p2a, s, c):
 
 
 def main():
-
 
     # Make complete game tree to find all leaves ===========
 
