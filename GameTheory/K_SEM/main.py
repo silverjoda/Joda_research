@@ -2,6 +2,7 @@ from copy import deepcopy
 from itertools import *
 import numpy as np
 from NEGameCalc import *
+import matplotlib.pyplot as plt
 
 class Node:
     def __init__(self, game, depth):
@@ -134,8 +135,8 @@ def RSPoutcome(p1a, p2a, s, c):
 
 def evaluateParams():
 
-    s = np.arange(1, 10, 0.2)
-    c = np.arange(0.3, 4, 0.2)
+    s = np.arange(1, 10, 0.5)
+    c = np.arange(0.3, 4, 0.5)
 
     hitmat = np.zeros((len(s), len(c)))
 
@@ -157,7 +158,14 @@ def evaluateParams():
             NE = game.getNE()
 
             if np.max(NE[0][3]) > 0.99:
-                hitmat[len(s) - i - 1, j] = 1
+                hitmat[i, j] = 1
+
+    plt.imshow(hitmat, cmap='seismic',interpolation='none')
+    plt.xlabel('card discard value')
+    plt.ylabel('star value')
+    plt.axis([0.3,4,1,10])
+    plt.title("Plot of cooperation (Red means cooperation)")
+    plt.show()
 
     print hitmat
 

@@ -127,8 +127,15 @@ $\sigma_a = \sigma_b = (1/3,1/3,1/3)$. The value for both players in this case i
 The above result hints that in the repeated game we will probably have a result where either the whole sequence is followed, or we get a mixed strategy at the very first node. Indeed using a variety of values we could not get a situation where the players cooperated up to a certain point and then decided to stop, or deviate.\\
 We ran the game for a variety of values $s$ and $c$ to observe the equillibrium strategies of the players at each stage of the game. Below is a plot of some combinations of variables with the shaded region denoting the values at which it was profitable for both players to stick to the agreed sequence throughout the whole game. 
 
+\includegraphics[width=12cm]{ranges} \\
 
+\vspace{2mm}
 
+\section{Future work}
+It would be interesting to consider how a player would actually play a game of RRSP with a random oponent. In such a case
+a player has public information on how many of each cards are left in the whole arena, the amount of cards their oponent is holding and 
+the contents of their own cards. This type of scenario is relatively difficult to form in a game-theoretic framework and could be perhaps solved
+using other methods such as reinforcement learning etc. The problem could be posed as an agent who is trying to maximize their expected utility given a set of features. A simulated environment where the agents play out whole episodes could be used to train the agents to play optimally given the set of public and private information.
 
 
 \end{document}
