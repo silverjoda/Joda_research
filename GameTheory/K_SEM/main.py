@@ -24,7 +24,8 @@ class Node:
                'a: ' + '\n' + str(self.a) + '\n' + 'b: ' + '\n' + str(self.b) + '\n' \
                + 'u: {},'.format(self.NE[0]) + ' v: {}'.format(self.NE[1]) + \
                '\n' + 'Sa: ' + str(self.NE[2]) + '\n' + 'Sb: ' + str(self.NE[3]) \
-               + '\n' + 'Available acts: {}'.format(self.game._get_available_actions(self.depth)) + '\n'
+               + '\n' + 'Available acts: {}'.format(self.game._get_available_actions(self.depth)) \
+               + '\n' + 'Agreed upon action: {}'.format(self.game.agreed_upon_sequence[self.depth]) + '\n'
 
     def getNE(self):
 
@@ -134,7 +135,7 @@ def main():
 
     # Value parameters
     star_val = 3
-    card_discard_val = 1
+    card_discard_val = 0.5
     actions = ('R','S','P','F')
     agreed_upon_sequence = ('R','R','R','R','P','P','P','P','S','S','S','S')
 

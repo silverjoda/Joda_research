@@ -83,4 +83,13 @@ def calcILPNE(a, b):
         print "Error ... NE is infeasible, exiting..."
         exit()
 
-    return u.x, v.x, [x[i].x for i in range(M)], [y[j].x for j in range(N)]
+
+    return clip(u.x), clip(v.x), \
+           [clip(x[i].x) for i in range(M)],\
+           [clip(y[j].x) for j in range(N)]
+
+def clip(val):
+    if np.abs(val) < 1e-12:
+        return 0
+    else:
+        return val
