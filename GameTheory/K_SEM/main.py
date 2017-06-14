@@ -51,16 +51,16 @@ class Node:
                 continue
 
             # Get nash equillibrium of descendant
-            NE = n.getNE()
+            u,v,_,_ = n.getNE()
 
             # Actions to indeces
             actionA = actTonum(n.prev_action[0])
             actionB = actTonum(n.prev_action[1])
 
-            a[actionA, actionB] += NE[0]
-            b[actionA, actionB] += NE[1]
+            a[actionA, actionB] += u
+            b[actionA, actionB] += v
 
-        self.NE = calcILPNE(a,b)
+        self.NE = calcILPNE(a,b,self.available_acts)
 
         return self.NE
 
@@ -147,7 +147,7 @@ class Game:
             cur_depth += 1
 
     def _get_available_actions(self, depth):
-        return list(set(self.agreed_upon_sequence[depth:]))
+        return list(set(self.agreed_upon_sequence[depth:])) + ['F']
 
     def getNE(self):
 
@@ -157,7 +157,7 @@ class Game:
             # Append only the actions
             NEseq.append((n.getNE()[2], n.getNE()[3]))
 
-            # If deviation at this point then consider game finished
+            # If strategy is not pure then consider game finished
             if np.max(n.getNE()[2]) < 0.99 or np.max(n.getNE()[3]) < 0.99:
                 break
 
@@ -204,7 +204,7 @@ def main():
     # Value parameters
     star_val = 3
     card_discard_val = 1
-    actions = ('R','S','P')
+    actions = ('R','S','P','F')
     agreed_upon_sequence = ('R','R','R','R','P','P','P','P','S','S','S','S')
 
     # Make Game
@@ -212,8 +212,6 @@ def main():
 
     # Find NE of whole tree by backwards induction
     NE = game.getNE()
-
-    exit()
 
     # Print info
     if NE is not None:

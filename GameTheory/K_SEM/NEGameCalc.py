@@ -1,7 +1,11 @@
 import numpy as np
 import gurobipy as g
 
-def calcILPNE(a, b):
+def actTonum(act):
+    actions = ('R', 'S', 'P', 'F')
+    return actions.index(act)
+
+def calcILPNE(a, b, acts):
     '''
 
     Parameters
@@ -14,6 +18,11 @@ def calcILPNE(a, b):
     u,v,s(a),s(b)
 
     '''
+
+    support = np.zeros(a.shape[0])
+
+    for act in acts:
+        support[actTonum(act)] = 1
 
     M, N = a.shape
 
@@ -31,16 +40,16 @@ def calcILPNE(a, b):
     # Big Z
     Z = 1000
 
-    u = m.addVar(lb=-Z, ub=Z, vtype=g.GRB.CONTINUOUS)
-    v = m.addVar(lb=-Z, ub=Z, vtype=g.GRB.CONTINUOUS)
+    u = m.addVar(lb=-Z, ub=Z, vtype=g.GRB.CONTINUOUS, obj=-1)
+    v = m.addVar(lb=-Z, ub=Z, vtype=g.GRB.CONTINUOUS, obj=-1)
 
     for i in range(M):
-        x[i] = m.addVar(lb=0, ub=1, vtype=g.GRB.CONTINUOUS)
+        x[i] = m.addVar(lb=0, ub=support[i], vtype=g.GRB.CONTINUOUS)
         p[i] = m.addVar(lb=0, ub=g.GRB.INFINITY, vtype=g.GRB.CONTINUOUS)
         w[i] = m.addVar(vtype=g.GRB.BINARY)
 
     for j in range(N):
-        y[j] = m.addVar(lb=0, ub=1, vtype=g.GRB.CONTINUOUS)
+        y[j] = m.addVar(lb=0, ub=support[i], vtype=g.GRB.CONTINUOUS)
         q[j] = m.addVar(lb=0, ub=g.GRB.INFINITY, vtype=g.GRB.CONTINUOUS)
         z[j] = m.addVar(vtype=g.GRB.BINARY)
 

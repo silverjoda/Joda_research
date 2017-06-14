@@ -10,6 +10,41 @@ b = np.random.randint(-utrange,utrange,size=(gamesize,gamesize))
 #a = utrange*np.random.rand(gamesize,gamesize)
 #b = utrange*np.random.rand(gamesize,gamesize)
 
+def getGameMatrix():
+    a = np.zeros((4, 4))
+    b = np.zeros_like(a)
+
+    for i in range(4):
+        for j in range(4):
+            u, v = RSPoutcome(('R', 'S', 'P', 'F')[i],
+                              ('R', 'S', 'P', 'F')[j],
+                              3,
+                              1)
+
+            a[i, j] = u
+            b[i, j] = v
+
+    return a, b
+
+def RSPoutcome(p1a, p2a, s, c):
+
+    actions = ('R','S','P','F')
+
+    valueMat = np.array([[(c, c), (c + s, c - s), (c - s, c + s), (0, 0)],
+                        [(c - s, c + s), (c, c), (c + s, c - s), (0, 0)],
+                        [(c + s, c - s), (c - s, c + s), (c, c), (0, 0)],
+                        [(0, 0), (0, 0), (0, 0), (0, 0)]])
+
+    return valueMat[actions.index(p1a),actions.index(p2a)]
+
+a, b = getGameMatrix()
+
+auxmat = np.zeros((4,4))
+auxmat[1,1] = 3
+
+a += auxmat
+b += auxmat
+
 print 'a: '
 print a
 print 'b: '
@@ -31,8 +66,8 @@ z = {}
 # Big Z
 Z = np.sum([np.abs(a), np.abs(b)])
 
-u = m.addVar(lb=-Z, ub=Z, vtype=g.GRB.CONTINUOUS, name='u', obj=1)
-v = m.addVar(lb=-Z, ub=Z, vtype=g.GRB.CONTINUOUS, name='v', obj=1)
+u = m.addVar(lb=-Z, ub=Z, vtype=g.GRB.CONTINUOUS, name='u', obj=-1)
+v = m.addVar(lb=-Z, ub=Z, vtype=g.GRB.CONTINUOUS, name='v', obj=-1)
 
 for i in range(M):
     x[i] = m.addVar(lb=0, ub=1, vtype=g.GRB.CONTINUOUS, name="x{}".format(i))
@@ -69,11 +104,9 @@ m.addConstr(g.quicksum(y[j] for j in range(N)), g.GRB.EQUAL, 1)
 # Set objective if general sum game
 #m.setObjective()
 
-
-
 # Solve
+m.setParam('outputFlag', 0)
 m.optimize()
-
 
 if m.status == g.GRB.INFEASIBLE:
     m.computeIIS()
