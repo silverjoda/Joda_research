@@ -134,8 +134,8 @@ def RSPoutcome(p1a, p2a, s, c):
 
 def evaluateParams():
 
-    s = np.arange(1, 10, 0.3)
-    c = np.arange(0.3, 4, 0.3)
+    s = np.arange(1, 10, 0.2)
+    c = np.arange(0.3, 4, 0.2)
 
     hitmat = np.zeros((len(s), len(c)))
 
