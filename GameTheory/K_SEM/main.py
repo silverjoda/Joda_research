@@ -25,7 +25,9 @@ class Node:
                + 'u: {},'.format(self.NE[0]) + ' v: {}'.format(self.NE[1]) + \
                '\n' + 'Sa: ' + str(self.NE[2]) + '\n' + 'Sb: ' + str(self.NE[3]) \
                + '\n' + 'Available acts: {}'.format(self.game._get_available_actions(self.depth)) \
-               + '\n' + 'Agreed upon action: {}'.format(self.game.agreed_upon_sequence[self.depth]) + '\n'
+               + '\n' + 'Agreed upon action: {}'.format(self.game.agreed_upon_sequence[self.depth]) \
+               + '\n' + 'Current card discount value: {}'.format(self.game.card_discard_val*(self.game.decay**self.depth)) \
+               + '\n'
 
     def getNE(self):
 
@@ -36,7 +38,7 @@ class Node:
 
         # Calculate game matrices
         if self.a is None:
-            self.a, self.b = self.game.getGameMatrix(available_acts)
+            self.a, self.b = self.game.getGameMatrix(available_acts, self.depth)
 
         # Pre-last node
         if self.depth < 11:
@@ -59,11 +61,12 @@ class Node:
 
 
 class Game:
-    def __init__(self, actions, agreed_upon_sequence, star_val, card_discard_val):
+    def __init__(self, actions, agreed_upon_sequence, star_val, card_discard_val, decay):
         self.actions = actions
         self.agreed_upon_sequence = agreed_upon_sequence
         self.star_val = star_val
         self.card_discard_val = card_discard_val
+        self.decay = decay
 
         # Make the game tree
         self._maketree()
@@ -99,7 +102,7 @@ class Game:
         # Return whole NE sequence and value at root node
         return NEseq
 
-    def getGameMatrix(self, available_acts):
+    def getGameMatrix(self, available_acts, depth):
 
         a = np.zeros((len(available_acts), len(available_acts)))
         b = np.zeros_like(a)
@@ -107,7 +110,8 @@ class Game:
         for i in range(len(available_acts)):
             for j in range(len(available_acts)):
                 u,v = RSPoutcome(available_acts[i], available_acts[j],
-                                self.star_val, self.card_discard_val)
+                                self.star_val,
+                                self.card_discard_val*(self.decay**depth))
 
                 a[i, j] = u
                 b[i, j] = v
@@ -128,19 +132,49 @@ def RSPoutcome(p1a, p2a, s, c):
 
     return valueMat[actions.index(p1a),actions.index(p2a)]
 
+def evaluateParams():
+
+    s = np.arange(1, 10, 0.3)
+    c = np.arange(0.3, 4, 0.3)
+
+    hitmat = np.zeros((len(s), len(c)))
+
+    for i in range(len(s)):
+        for j in range(len(c)):
+            # Value parameters
+            star_val = s[i]
+            card_discard_val = c[j]
+            decay = 1
+            actions = ('R', 'S', 'P', 'F')
+            agreed_upon_sequence = (
+            'R', 'R', 'R', 'R', 'P', 'P', 'P', 'P', 'S', 'S', 'S', 'S')
+
+            # Make Game
+            game = Game(actions, agreed_upon_sequence, star_val,
+                        card_discard_val, decay)
+
+            # Find NE of whole tree by backwards induction
+            NE = game.getNE()
+
+            if np.max(NE[0][3]) > 0.99:
+                hitmat[len(s) - i - 1, j] = 1
+
+    print hitmat
 
 def main():
 
-    # Make complete game tree to find all leaves ===========
+    evaluateParams()
+    exit()
 
     # Value parameters
     star_val = 3
-    card_discard_val = 0.5
+    card_discard_val = 1
+    decay = 1
     actions = ('R','S','P','F')
     agreed_upon_sequence = ('R','R','R','R','P','P','P','P','S','S','S','S')
 
     # Make Game
-    game = Game(actions, agreed_upon_sequence, star_val, card_discard_val)
+    game = Game(actions, agreed_upon_sequence, star_val, card_discard_val, decay)
 
     # Find NE of whole tree by backwards induction
     NE = game.getNE()
