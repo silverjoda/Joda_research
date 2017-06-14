@@ -38,12 +38,17 @@ class Node:
         # Nash equillibrium at this node
         self.NE = None
 
+        # Nodes game matrices
+        self.a = None
+        self.b = None
+
     def getNE(self):
 
         if self.NE is not None: return self.NE
 
         # Calculate game matrices
-        a, b = self.game.getGameMatrix()
+        if self.a is None:
+            self.a, self.b = self.game.getGameMatrix()
 
         for n in self.descendants:
 
@@ -57,10 +62,10 @@ class Node:
             actionA = actTonum(n.prev_action[0])
             actionB = actTonum(n.prev_action[1])
 
-            a[actionA, actionB] += u
-            b[actionA, actionB] += v
+            self.a[actionA, actionB] += u
+            self.b[actionA, actionB] += v
 
-        self.NE = calcILPNE(a,b,self.available_acts)
+        self.NE = calcILPNE(self.a, self.b, self.available_acts)
 
         return self.NE
 
@@ -149,20 +154,28 @@ class Game:
     def _get_available_actions(self, depth):
         return list(set(self.agreed_upon_sequence[depth:])) + ['F']
 
+    def coopAction(self, act):
+        if act == []: return True
+        return act[0] == act[1]
+
     def getNE(self):
 
         NEseq = []
 
         for n in self.nodeList:
+
+            if not self.coopAction(n.prev_action):
+                continue
+
             # Append only the actions
-            NEseq.append((n.getNE()[2], n.getNE()[3]))
+            NEseq.append(n.getNE())
 
             # If strategy is not pure then consider game finished
             if np.max(n.getNE()[2]) < 0.99 or np.max(n.getNE()[3]) < 0.99:
                 break
 
         # Return whole NE sequence and value at root node
-        return NEseq, self.root.getNE()[1]
+        return NEseq
 
     def getGameMatrix(self):
 
@@ -187,7 +200,7 @@ def actTonum(act):
 
 def RSPoutcome(p1a, p2a, s, c):
 
-    actions = ('R','S','P','F')
+    actions = ('R', 'S', 'P', 'F')
 
     valueMat = np.array([[(c, c), (c + s, c - s), (c - s, c + s), (0, 0)],
                         [(c - s, c + s), (c, c), (c + s, c - s), (0, 0)],
