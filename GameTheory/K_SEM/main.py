@@ -163,8 +163,8 @@ def evaluateParams():
 
 def main():
 
-    evaluateParams()
-    exit()
+    #evaluateParams()
+    #exit()
 
     # Value parameters
     star_val = 3
