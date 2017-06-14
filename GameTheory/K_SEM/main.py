@@ -21,20 +21,21 @@ class Node:
 
     def __str__(self):
         return 'Node at depth ' + str(self.depth) + '\n' + \
-               'a: ' + str(self.a) + '\n' + 'b: ' + '\n' + str(self.b) + '\n' \
+               'a: ' + '\n' + str(self.a) + '\n' + 'b: ' + '\n' + str(self.b) + '\n' \
                + 'u: {},'.format(self.NE[0]) + ' v: {}'.format(self.NE[1]) + \
                '\n' + 'Sa: ' + str(self.NE[2]) + '\n' + 'Sb: ' + str(self.NE[3]) \
-               + '\n' + 'Available acts: '.format() + '\n'
+               + '\n' + 'Available acts: {}'.format(self.game._get_available_actions(self.depth)) + '\n'
 
     def getNE(self):
 
         if self.NE is not None: return self.NE
 
+        # Available actions in this node
+        available_acts = self.game._get_available_actions(self.depth)
+
         # Calculate game matrices
         if self.a is None:
-            self.a, self.b = self.game.getGameMatrix()
-
-        assert self.a.shape == (4,4) and self.b.shape == (4,4)
+            self.a, self.b = self.game.getGameMatrix(available_acts)
 
         # Pre-last node
         if self.depth < 11:
@@ -45,13 +46,12 @@ class Node:
             u,v,_,_ = nextNode.getNE()
 
             # Actions to indeces
-            action = actTonum(self.game.agreed_upon_sequence[self.depth])
+            action = actTonum(available_acts, self.game.agreed_upon_sequence[self.depth])
 
             self.a[action, action] += u
             self.b[action, action] += v
 
-        self.NE = calcILPNE(self.a, self.b,
-                            self.game._get_available_actions(self.depth))
+        self.NE = calcILPNE(self.a, self.b)
 
         return self.NE
 
@@ -95,14 +95,10 @@ class Game:
             # Append only the actions
             NEseq.append(n.getNE())
 
-            # If strategy is not pure then consider game finished
-            if np.max(n.getNE()[2]) < 0.99 or np.max(n.getNE()[3]) < 0.99:
-                pass
-
         # Return whole NE sequence and value at root node
         return NEseq
 
-    def getGameMatrix(self):
+    def getGameMatrix(self, available_acts):
 
         a = np.zeros((len(self.actions), len(self.actions)))
         b = np.zeros_like(a)
@@ -119,9 +115,8 @@ class Game:
 
         return a, b
 
-def actTonum(act):
-    actions = ('R', 'S', 'P', 'F')
-    return actions.index(act)
+def actTonum(available_acts, act):
+    return available_acts.index(act)
 
 def RSPoutcome(p1a, p2a, s, c):
 
