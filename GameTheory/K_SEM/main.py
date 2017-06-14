@@ -4,36 +4,13 @@ import numpy as np
 from NEGameCalc import *
 
 class Node:
-    def __init__(self, game, history, prev_action, depth, cur_acts, predecessor,
-                 isleaf=False, value = None):
+    def __init__(self, game, depth):
 
         # Instance of game
         self.game = game
 
-        # Node predecessor
-        self.predecessor = predecessor
-
-        # Descendants of the node
-        self.descendants = []
-
-        # Copy and append history
-        if prev_action is not None or prev_action != []:
-            self.history = deepcopy(history + [prev_action])
-
-        # Last action
-        self.prev_action = prev_action
-
-        # Get currently available actions
-        self.available_acts = cur_acts
-
         # Current node depth
         self.depth = depth
-
-        # Value of the node (Nash Equillibrium)
-        self.value = value
-
-        # True if node finishes the game
-        self.isleaf = isleaf
 
         # Nash equillibrium at this node
         self.NE = None
@@ -41,6 +18,13 @@ class Node:
         # Nodes game matrices
         self.a = None
         self.b = None
+
+    def __str__(self):
+        return 'Node at depth ' + str(self.depth) + '\n' + \
+               'a: ' + str(self.a) + '\n' + 'b: ' + '\n' + str(self.b) + '\n' \
+               + 'u: {},'.format(self.NE[0]) + ' v: {}'.format(self.NE[1]) + \
+               '\n' + 'Sa: ' + str(self.NE[2]) + '\n' + 'Sb: ' + str(self.NE[3]) \
+               + '\n' + 'Available acts: '.format() + '\n'
 
     def getNE(self):
 
@@ -50,22 +34,24 @@ class Node:
         if self.a is None:
             self.a, self.b = self.game.getGameMatrix()
 
-        for n in self.descendants:
+        assert self.a.shape == (4,4) and self.b.shape == (4,4)
 
-            if n.isleaf:
-                continue
+        # Pre-last node
+        if self.depth < 11:
+
+            nextNode = self.game.nodeList[self.depth + 1]
 
             # Get nash equillibrium of descendant
-            u,v,_,_ = n.getNE()
+            u,v,_,_ = nextNode.getNE()
 
             # Actions to indeces
-            actionA = actTonum(n.prev_action[0])
-            actionB = actTonum(n.prev_action[1])
+            action = actTonum(self.game.agreed_upon_sequence[self.depth])
 
-            self.a[actionA, actionB] += u
-            self.b[actionA, actionB] += v
+            self.a[action, action] += u
+            self.b[action, action] += v
 
-        self.NE = calcILPNE(self.a, self.b, self.available_acts)
+        self.NE = calcILPNE(self.a, self.b,
+                            self.game._get_available_actions(self.depth))
 
         return self.NE
 
@@ -86,70 +72,12 @@ class Game:
         # Keep list of all nodes of tree
         self.nodeList = []
 
-        # Current action history
-        history = []
-
-        # Currently available actions
-        cur_acts = self.actions
-
-        # Current depth of the tree.
-        cur_depth = 0
-
-        # Current node
-        cur_node = Node(self, history, [], 0, cur_acts, None)
-        self.nodeList.append(cur_node)
-        self.root = cur_node
-
-        # At most D games (we only branch once everytime).
-        while True:
-
-            # All possible combinations of actions of both players
-            action_perms = [c for c in product(cur_acts, repeat=2)]
-
-            for a in action_perms:
-
-                # Skip the part where we go to the next depth
-                if a[0] == a[1] == self.agreed_upon_sequence[cur_depth]:
-                    continue
-
-                # Make new node
-                new_node = Node(self, history, a, cur_depth + 1,
-                                   self._get_available_actions(cur_depth + 1),
-                                   cur_node,
-                                   isleaf = True)
-
-                # Add node to list
-                self.nodeList.append(new_node)
-
-                # Add node,action pair to descendants
-                cur_node.descendants.append(new_node)
-
-            # Make current node the one which continues the game
-            c_act = (self.agreed_upon_sequence[cur_depth], self.agreed_upon_sequence[cur_depth])
-
+        for i in range(len(self.agreed_upon_sequence)):
             # Make new node
-            new_node = Node(self, history, c_act, cur_depth + 1,
-                            self._get_available_actions(cur_depth + 1),
-                            cur_node,
-                            isleaf=False)
+            new_node = Node(self, i)
 
             # Add node to list
             self.nodeList.append(new_node)
-
-            # Add node,action pair to descendants
-            cur_node.descendants.append(new_node)
-
-            cur_node = new_node
-
-            # Append latest action to history
-            history.append(c_act)
-
-            # Terminate if we played the whole sequence
-            if cur_depth == len(self.agreed_upon_sequence) - 1:
-               break
-
-            # Increment depth counter
-            cur_depth += 1
 
     def _get_available_actions(self, depth):
         return list(set(self.agreed_upon_sequence[depth:])) + ['F']
@@ -164,15 +92,12 @@ class Game:
 
         for n in self.nodeList:
 
-            if not self.coopAction(n.prev_action):
-                continue
-
             # Append only the actions
             NEseq.append(n.getNE())
 
             # If strategy is not pure then consider game finished
             if np.max(n.getNE()[2]) < 0.99 or np.max(n.getNE()[3]) < 0.99:
-                break
+                pass
 
         # Return whole NE sequence and value at root node
         return NEseq
@@ -226,10 +151,15 @@ def main():
     # Find NE of whole tree by backwards induction
     NE = game.getNE()
 
+    for node in game.nodeList:
+        print node
+
     # Print info
-    if NE is not None:
-        print "Found NE in transformed NFG by ILP: "
-        print NE
+    # if NE is not None:
+    #     print "Found NE in transformed NFG by ILP: "
+    #
+    #     for ne in NE:
+    #         print ne
 
 
 
