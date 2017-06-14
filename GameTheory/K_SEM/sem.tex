@@ -2,6 +2,7 @@
 %Gummi|065|=)
 
 \usepackage{graphicx}
+\usepackage{amsmath}
 
 \title{\textbf{AGT - Semestral work}}
 \author{Teymur Azayev\\}
@@ -79,14 +80,27 @@ The algorithm is simple. We start from the last game and compute the NE, giving 
 \includegraphics[width=10cm]{prop} \\
 
 \section{Calculating NE}
-To calculate the Nash equillibrium we use the following MILP formulation taken from the slides of Branislav Bosansky:
+To calculate the Nash equillibrium we use the following MILP formulation. 
 
+\begin{align*} 
+\sum_{j \in N} a_{ij} + q_i &= u & \forall i \in M \\ 
+\sum_{i \in M} b_{ij} + p_i &= v & \forall j \in N
+\end{align*}
 
+\begin{equation}
+\sum_{i \in M} x_i = 1 \sum_{j \in N} y_j = 1\\ 
+\end{equation}
 
+\begin{equation}
+w_i, z_j \in \{0,1\}, \ w_i \geq x_i \geq 0, \ z_i \geq y_i \geq 0 \ \ \ \ \forall i \in M \forall j \in N
+\end{equation}
 
+\begin{equation}
+0 \leq p_i \leq (1 - w_i)Z, \ 0 \leq q_j \leq(1-z_j)Z \ \ \ \ \forall i \in M \forall j \in N
+\end{equation} \\
 
-
-
+One of the advantages of this formulation is the generality of it and the ability to add any objective function of our choosing. 
+Since we are working working constant sum games, we do not have to add an objective, because we know that there is a unique NE, but adding a simple objective such as $min(-(u+v))$ for a General sum game can enable us to find a NE that maximizes social warfare. 
 
 
 
