@@ -100,15 +100,13 @@ class Game:
 
     def getGameMatrix(self, available_acts):
 
-        a = np.zeros((len(self.actions), len(self.actions)))
+        a = np.zeros((len(available_acts), len(available_acts)))
         b = np.zeros_like(a)
 
-        for i in range(len(self.actions)):
-            for j in range(len(self.actions)):
-                u,v = RSPoutcome(('R','S','P','F')[i],
-                                    ('R','S','P','F')[j],
-                                    self.star_val,
-                                    self.card_discard_val)
+        for i in range(len(available_acts)):
+            for j in range(len(available_acts)):
+                u,v = RSPoutcome(available_acts[i], available_acts[j],
+                                self.star_val, self.card_discard_val)
 
                 a[i, j] = u
                 b[i, j] = v
@@ -148,13 +146,6 @@ def main():
 
     for node in game.nodeList:
         print node
-
-    # Print info
-    # if NE is not None:
-    #     print "Found NE in transformed NFG by ILP: "
-    #
-    #     for ne in NE:
-    #         print ne
 
 
 
