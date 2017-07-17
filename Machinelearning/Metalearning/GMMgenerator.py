@@ -11,8 +11,13 @@ class Funcgen:
     def __init__(self):
         pass
 
-    def sampleGMM(self):
-        return GMM()
+    def sampleGMM(self, n_comp, samplenoise, res):
+
+        # Generate means and stds
+        means = np.random.rand(n_comp) - 0.5
+        stds = np.random.rand(n_comp) / 10.
+
+        return GMM(means, stds, samplenoise, res)
 
 
 class GMM:
@@ -36,7 +41,11 @@ class GMM:
         self.funlut /= (np.sum(self.funlut) / res)
 
     def sample(self, x):
-        pass
+        assert -1 <= x <= 1
+        idx = int(x * (self.res / 2.) + ((self.res - 1) / 2.))
+        assert 0 <= idx < self.res
+        return self.funlut[idx]
+
 
 
 
