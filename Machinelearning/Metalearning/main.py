@@ -1,5 +1,5 @@
-
 from funcgenerators import *
+import tflearn as tfl
 
 def main():
 
@@ -16,6 +16,9 @@ def main():
     # Function query noise
     func_noise = 0.1
 
+    # Function domain resolution
+    func_res = 1000
+
     # Global NN hyperparameters:
     n_hidden = 2
     dropout_keep = 0.8
@@ -24,14 +27,26 @@ def main():
     # Function generator
     func_gen = Funcgen()
 
+    # Initialize tensorflow
+    tfl.init_graph(num_cores=2, gpu_memory_fraction=0.5)
+
     for i in range(n_funcs):
 
         # Sample random function
-        func = func_gen.sampleGMM(2,)
+        func = func_gen.sampleGMM(2, func_noise, func_res)
+
+        # Create NN classifier with random weights
+
+        # Train classifier until eps error is achieved on validation
+
+        # Register required sample count
+
+    # Print average sample complexity for vanilla training:
 
 
+    # 2) Learn the meta ============================================
 
-    # Learn the meta
+
 
     # Evaluate
 
