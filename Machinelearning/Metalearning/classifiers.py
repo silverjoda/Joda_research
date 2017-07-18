@@ -5,15 +5,45 @@ import numpy as np
 class Approximator:
     def __init__(self, input_dim, output_dim, n_hidden, n_units, l2_decay, dropout_keep):
 
-        self.net = tfl.input_data(shape=[None, input_dim])
+        self.X = tf.placeholder("float", shape=[None, input_dim])
+        self.Y = tf.placeholder("float", shape=[None, output_dim])
 
         for i in range(n_hidden):
-            self.net = tfl.fully_connected(self.net, n_units, activation='relu')
+            self.net = tfl.fully_connected(self.X, n_units, activation='relu')
             self.net = tfl.dropout(self.net, dropout_keep)
 
-        self.net = tfl.fully_connected(self.net, output_dim, activation='linear')
+        self.prediction = tfl.fully_connected(self.net, output_dim, activation='linear')
 
-    def fit(self, X, Y, batchsize):
+        # Backward propagation
+        self.loss = tf.reduce_mean(tf.squared_difference(self.prediction, self.Y))
+        self.train = tf.train.GradientDescentOptimizer(0.001).minimize(self.loss)
+
+
+    def fit(self, dataprovider, batchsize, epsilon):
+
+        sess = tf.Session()
+        sess.run(tf.initialize_all_variables())
+
+        ctr = 0
+        while(True):
+
+            ctr += 1
+
+            # Obtain batch of data
+            X, Y = dataprovider.getBatch(batchsize)
+
+            # Train on batch
+            sess.run(self.train, feed_dict={self.X : X, self.Y : Y})
+
+            # Evaluate
+            err = self.eval(dataprovider)
+
+            if err < 0.1:
+                break
+
+        return ctr
+
+    def eval(self, dataprovider):
         pass
 
 class GradNet:

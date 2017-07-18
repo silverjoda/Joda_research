@@ -7,8 +7,8 @@ def main():
     # epsilon approximation error for fixed NN for fixed
     # distribution of functions ===========================
 
-    # eps percent validation error
-    epsilon = 0.05
+    # eps validation error
+    epsilon = 0.1
 
     # Amount of sampled functions
     n_funcs = 1000
