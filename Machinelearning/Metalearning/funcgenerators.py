@@ -2,7 +2,6 @@ import numpy as np
 from numpy import sqrt, pi, exp
 
 
-
 class Funcgen:
     '''
     This class serves to generate distributions from function
@@ -18,6 +17,15 @@ class Funcgen:
         stds = np.random.rand(n_comp) / 10.
 
         return GMM(means, stds, samplenoise, res)
+
+    def sampleSins(self):
+        pass
+
+    def sampleLinfuncs(self):
+        pass
+
+    def sampleQuadfuncs(self):
+        pass
 
 
 class GMM:
