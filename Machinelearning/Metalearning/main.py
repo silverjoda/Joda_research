@@ -37,6 +37,7 @@ def main():
 
         # Create NN classifier with random weights
 
+
         # Train classifier until eps error is achieved on validation
 
         # Register required sample count

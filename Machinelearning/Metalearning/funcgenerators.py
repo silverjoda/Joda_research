@@ -55,6 +55,12 @@ class GMM:
         return self.funlut[idx]
 
 
+class Dataprovider:
+    def __init__(self, func):
+        self.func = func
+
+    def getBatch(self, batchsize):
+        pass
 
 
 
