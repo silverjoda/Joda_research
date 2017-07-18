@@ -175,7 +175,7 @@ def main():
     #exit()
 
     # Value parameters
-    star_val = 3
+    star_val = 5
     card_discard_val = 1
     decay = 1
     actions = ('R','S','P','F')
