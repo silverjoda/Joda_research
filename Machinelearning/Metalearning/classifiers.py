@@ -3,13 +3,13 @@ import tflearn as tfl
 import numpy as np
 
 class Approximator:
-    def __init__(self, input_dim, output_dim, n_hidden, n_units, l2_decay, dropout_keep):
+    def __init__(self, input_dim, output_dim, n_hidden, n_hidden_units, l2_decay, dropout_keep):
 
         self.X = tf.placeholder("float", shape=[None, input_dim])
         self.Y = tf.placeholder("float", shape=[None, output_dim])
 
         for i in range(n_hidden):
-            self.net = tfl.fully_connected(self.X, n_units, activation='relu')
+            self.net = tfl.fully_connected(self.X, n_hidden_units, activation='relu')
             self.net = tfl.dropout(self.net, dropout_keep)
 
         self.prediction = tfl.fully_connected(self.net, output_dim, activation='linear')
@@ -19,7 +19,7 @@ class Approximator:
         self.train = tf.train.GradientDescentOptimizer(0.001).minimize(self.loss)
 
 
-    def fit(self, dataprovider, batchsize, epsilon):
+    def fituntileps(self, dataprovider, batchsize, epsilon):
 
         sess = tf.Session()
         sess.run(tf.initialize_all_variables())

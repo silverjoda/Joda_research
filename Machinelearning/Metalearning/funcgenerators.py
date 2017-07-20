@@ -49,10 +49,10 @@ class GMM:
         self.funlut /= (np.sum(self.funlut) / res)
 
     def sample(self, x):
-        assert -1 <= x <= 1
-        idx = int(x * (self.res / 2.) + ((self.res - 1) / 2.))
-        assert 0 <= idx < self.res
-        return self.funlut[idx]
+        assert np.all(-1 <= x <= 1)
+        idx = (x * (self.res / 2.) + ((self.res - 1) / 2.)).astype(int)
+        assert np.all(0 <= idx < self.res)
+        return self.funlut[idx] + np.random.randn(len(x)) * self.samplenoise
 
 
 class Dataprovider:

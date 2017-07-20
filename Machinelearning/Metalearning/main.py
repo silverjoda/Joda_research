@@ -1,4 +1,5 @@
 from funcgenerators import *
+from classifiers import *
 import tflearn as tfl
 
 def main():
@@ -19,34 +20,47 @@ def main():
     # Function domain resolution
     func_res = 1000
 
-    # Global NN hyperparameters:
+    # Fixed NN hyperparameters:
+    input_dim = 1
+    output_dim = 1
     n_hidden = 2
-    dropout_keep = 0.8
+    n_hidden_units = 16
     l2_decay = 0.001
+    dropout_keep = 0.8
+    minibatch_size = 32
+
 
     # Function generator
-    func_gen = Funcgen()
+    funcgen = Funcgen()
 
-    # Initialize tensorflow
-    tfl.init_graph(num_cores=2, gpu_memory_fraction=0.5)
+    # Create NN classifier with random weights
+    NN = Approximator(input_dim, output_dim, n_hidden, n_hidden_units, l2_decay)
+
+    # Sample stats
+    sample_count_list = []
+
+    print "Starting average sample count evaluation."
 
     for i in range(n_funcs):
 
         # Sample random function
-        func = func_gen.sampleGMM(2, func_noise, func_res)
+        func = funcgen.sampleGMM(2, func_noise, func_res)
 
-        # Create NN classifier with random weights
-
+        # Create dataprovider object
+        dataprovider = Dataprovider(func)
 
         # Train classifier until eps error is achieved on validation
+        sample_count = NN.fituntileps(dataprovider, minibatch_size, epsilon)
 
         # Register required sample count
+        sample_count_list.append(sample_count)
 
     # Print average sample complexity for vanilla training:
-
+    avg_sample_count = np.mean(sample_count_list)
+    print "Average sample count: {}".format(avg_sample_count)
 
     # 2) Learn the meta ============================================
-
+    print "Starting to learn meta."
 
 
     # Evaluate
