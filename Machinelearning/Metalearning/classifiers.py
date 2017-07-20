@@ -18,11 +18,11 @@ class Approximator:
         self.loss = tf.reduce_mean(tf.squared_difference(self.prediction, self.Y))
         self.train = tf.train.GradientDescentOptimizer(0.001).minimize(self.loss)
 
+        self.sess = tf.Session()
 
-    def fituntileps(self, dataprovider, batchsize, epsilon):
+    def fituntileps(self, func, batchsize, epsilon):
 
-        sess = tf.Session()
-        sess.run(tf.initialize_all_variables())
+        self.sess.run(tf.initialize_all_variables())
 
         ctr = 0
         while(True):
@@ -30,21 +30,32 @@ class Approximator:
             ctr += 1
 
             # Obtain batch of data
-            X, Y = dataprovider.getBatch(batchsize)
+            X, Y = func.samplemany(batchsize)
 
             # Train on batch
-            sess.run(self.train, feed_dict={self.X : X, self.Y : Y})
+            this.sess.run(self.train, feed_dict={self.X : X, self.Y : Y})
 
             # Evaluate
-            err = self.eval(dataprovider)
+            err = self.eval(func)
 
             if err < 0.1:
                 break
 
         return ctr
 
-    def eval(self, dataprovider):
-        pass
+    def eval(self, func):
+
+        # Amount of test points
+        n = 1024
+
+        # Obtain batch of data
+        X, Y = func.samplemany(n)
+
+        # Evaluate MSE loss on test dataset
+        mse = self.sess.run(self.loss, feed_dict={self.X: X, self.Y: Y})
+
+        return mse
+
 
 class GradNet:
     pass

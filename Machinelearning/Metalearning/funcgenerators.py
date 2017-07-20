@@ -49,18 +49,16 @@ class GMM:
         self.funlut /= (np.sum(self.funlut) / res)
 
     def sample(self, x):
-        assert np.all(-1 <= x <= 1)
+        assert -1 <= x <= 1
         idx = (x * (self.res / 2.) + ((self.res - 1) / 2.)).astype(int)
+        assert 0 <= idx < self.res
+        return self.funlut[idx] + np.random.randn() * self.samplenoise
+
+    def sampleRndBatch(self, n):
+        assert n <= self.res
+        X = np.random.randint(0, self.res, size=(n))
+        idx = (X * (self.res / 2.) + ((self.res - 1) / 2.)).astype(int)
         assert np.all(0 <= idx < self.res)
-        return self.funlut[idx] + np.random.randn(len(x)) * self.samplenoise
-
-
-class Dataprovider:
-    def __init__(self, func):
-        self.func = func
-
-    def getBatch(self, batchsize):
-        pass
-
-
+        Y = self.funlut[idx] + np.random.randn() * self.samplenoise
+        return X, Y
 

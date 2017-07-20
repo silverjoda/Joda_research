@@ -46,11 +46,8 @@ def main():
         # Sample random function
         func = funcgen.sampleGMM(2, func_noise, func_res)
 
-        # Create dataprovider object
-        dataprovider = Dataprovider(func)
-
         # Train classifier until eps error is achieved on validation
-        sample_count = NN.fituntileps(dataprovider, minibatch_size, epsilon)
+        sample_count = NN.fituntileps(func, minibatch_size, epsilon)
 
         # Register required sample count
         sample_count_list.append(sample_count)
