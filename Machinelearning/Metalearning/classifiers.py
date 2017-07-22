@@ -1,6 +1,7 @@
 import tensorflow as tf
 import tflearn as tfl
 import numpy as np
+from funcgenerators import sampleBatch
 
 class Approximator:
     def __init__(self, input_dim, output_dim, n_hidden, n_hidden_units, l2_decay, dropout_keep):
@@ -20,28 +21,35 @@ class Approximator:
 
         self.sess = tf.Session()
 
-    def fituntileps(self, func, batchsize, epsilon):
+    def fituntileps(self, func, epochs, batchsize, epsilon):
 
-        self.sess.run(tf.initialize_all_variables())
-
-        ctr = 0
+        # Initial sample count
+        samplesize = 10
         while(True):
 
-            ctr += 1
+            self.sess.run(tf.initialize_all_variables())
 
             # Obtain batch of data
-            X, Y = func.samplemany(batchsize)
+            X, Y = func.sampleManyRandom(samplesize)
 
-            # Train on batch
-            this.sess.run(self.train, feed_dict={self.X : X, self.Y : Y})
+            # Train proportionally to dataset size
+            for i in range(epochs * (samplesize / batchsize)):
+
+                bX, bY = sampleBatch(X, Y, batchsize)
+
+                # Train on batch
+                self.sess.run(self.train, feed_dict={self.X : bX,
+                                                     self.Y : bY})
 
             # Evaluate
             err = self.eval(func)
 
-            if err < 0.1:
+            if err < epsilon:
                 break
 
-        return ctr
+            samplesize += 10
+
+        return samplesize
 
     def eval(self, func):
 
@@ -49,7 +57,7 @@ class Approximator:
         n = 1024
 
         # Obtain batch of data
-        X, Y = func.samplemany(n)
+        X, Y = func.sampleManyRandom(n)
 
         # Evaluate MSE loss on test dataset
         mse = self.sess.run(self.loss, feed_dict={self.X: X, self.Y: Y})

@@ -28,13 +28,18 @@ def main():
     l2_decay = 0.001
     dropout_keep = 0.8
     minibatch_size = 32
-
+    epochs = 30
 
     # Function generator
     funcgen = Funcgen()
 
     # Create NN classifier with random weights
-    NN = Approximator(input_dim, output_dim, n_hidden, n_hidden_units, l2_decay)
+    NN = Approximator(input_dim,
+                      output_dim,
+                      n_hidden,
+                      n_hidden_units,
+                      l2_decay,
+                      dropout_keep)
 
     # Sample stats
     sample_count_list = []
@@ -46,8 +51,11 @@ def main():
         # Sample random function
         func = funcgen.sampleGMM(2, func_noise, func_res)
 
+        #func.plotfun()
+        #exit()
+
         # Train classifier until eps error is achieved on validation
-        sample_count = NN.fituntileps(func, minibatch_size, epsilon)
+        sample_count = NN.fituntileps(func, epochs, minibatch_size, epsilon)
 
         # Register required sample count
         sample_count_list.append(sample_count)

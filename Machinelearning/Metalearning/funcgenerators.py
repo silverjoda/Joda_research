@@ -1,6 +1,6 @@
 import numpy as np
 from numpy import sqrt, pi, exp
-
+import matplotlib.pyplot as plt
 
 class Funcgen:
     '''
@@ -13,8 +13,8 @@ class Funcgen:
     def sampleGMM(self, n_comp, samplenoise, res):
 
         # Generate means and stds
-        means = np.random.rand(n_comp) - 0.5
-        stds = np.random.rand(n_comp) / 10.
+        means = 1.6 * np.random.rand(n_comp) - 0.8
+        stds = np.random.rand(n_comp) / 5.
 
         return GMM(means, stds, samplenoise, res)
 
@@ -41,9 +41,12 @@ class GMM:
         self.fundomain = np.linspace(-1, 1, self.res)
 
         # Create function
-        self.funlut = np.sum([1/(s * sqrt(2 * pi)) *
-                              exp(-(self.fundomain - m)**2 / (2 * s**2))
-                              for m,s in zip(means, stds)])
+        self.funlut = np.zeros_like(self.fundomain)
+
+        for m, s in zip(means, stds):
+            self.funlut += 1/(s * sqrt(2 * pi)) * \
+                           exp(-(self.fundomain - m)**2 / (2 * s**2))
+
 
         # Normalize
         self.funlut /= (np.sum(self.funlut) / res)
@@ -54,11 +57,26 @@ class GMM:
         assert 0 <= idx < self.res
         return self.funlut[idx] + np.random.randn() * self.samplenoise
 
-    def sampleRndBatch(self, n):
+    def sampleManyRandom(self, n):
         assert n <= self.res
         X = np.random.randint(0, self.res, size=(n))
-        idx = (X * (self.res / 2.) + ((self.res - 1) / 2.)).astype(int)
-        assert np.all(0 <= idx < self.res)
-        Y = self.funlut[idx] + np.random.randn() * self.samplenoise
+        Y = self.funlut[X] + np.random.randn(n) * self.samplenoise
         return X, Y
 
+    def plotfun(self):
+        plt.plot(self.fundomain, self.funlut)
+        plt.show()
+
+def sampleBatch(X, Y, batchsize):
+
+    # Dataset size
+    n = len(X)
+
+    # Array
+    rnd_ind = np.arange(n)
+
+    # Random shuffle
+    np.random.shuffle(rnd_ind)
+
+    # Return random subset
+    return X[rnd_ind[:batchsize]], Y[rnd_ind[:batchsize]]
