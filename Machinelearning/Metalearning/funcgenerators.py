@@ -2,6 +2,8 @@ import numpy as np
 from numpy import sqrt, pi, exp
 import matplotlib.pyplot as plt
 
+np.random.seed(1337)
+
 class Funcgen:
     '''
     This class serves to generate distributions from function
@@ -53,7 +55,7 @@ class GMM:
 
     def sample(self, x):
         assert -1 <= x <= 1
-        idx = (x * (self.res / 2.) + ((self.res - 1) / 2.)).astype(int)
+        idx = int(x * (self.res / 2.) + ((self.res - 1) / 2.))
         assert 0 <= idx < self.res
         return self.funlut[idx] + np.random.randn() * self.samplenoise
 
@@ -63,8 +65,21 @@ class GMM:
         return X, Y
 
     def plotfun(self):
+
+        nlut = np.zeros_like(self.funlut)
+
+        for i in range(len(self.funlut)):
+            nlut[i] = self.sample(self.fundomain[i])
+
+        plt.figure(1)
+        plt.subplot(211)
         plt.plot(self.fundomain, self.funlut)
+
+        plt.subplot(212)
+        plt.plot(self.fundomain, nlut, 'r--')
         plt.show()
+
+
 
 def sampleBatch(X, Y, batchsize):
 

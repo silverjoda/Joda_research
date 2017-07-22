@@ -2,6 +2,8 @@ from funcgenerators import *
 from classifiers import *
 import tflearn as tfl
 
+np.random.seed(134)
+
 def main():
 
     # 1) Test average sample complexity required to achieve
@@ -9,13 +11,13 @@ def main():
     # distribution of functions ===========================
 
     # eps validation error
-    epsilon = 0.1
+    epsilon = 1
 
     # Amount of sampled functions
     n_funcs = 1000
 
     # Function query noise
-    func_noise = 0.1
+    func_noise = 0.2
 
     # Function domain resolution
     func_res = 1000
@@ -24,10 +26,10 @@ def main():
     input_dim = 1
     output_dim = 1
     n_hidden = 2
-    n_hidden_units = 16
+    n_hidden_units = 8
     l2_decay = 0.001
-    dropout_keep = 0.8
-    minibatch_size = 32
+    dropout_keep = 0.7
+    minibatch_size = 16
     epochs = 30
 
     # Function generator
@@ -66,6 +68,8 @@ def main():
 
     # 2) Learn the meta ============================================
     print "Starting to learn meta."
+
+    # TODO:
 
 
     # Evaluate

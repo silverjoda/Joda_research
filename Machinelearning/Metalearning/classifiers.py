@@ -3,6 +3,8 @@ import tflearn as tfl
 import numpy as np
 from funcgenerators import sampleBatch
 
+np.random.seed(1337)
+
 # Define GPU usage
 GPU = 0
 
@@ -12,15 +14,18 @@ class Approximator:
         self.X = tf.placeholder("float", shape=[None, input_dim])
         self.Y = tf.placeholder("float", shape=[None, output_dim])
 
+        self.net = tfl.fully_connected(self.X, n_hidden_units,activation='relu')
+        self.net = tfl.dropout(self.net, dropout_keep)
+
         for i in range(n_hidden):
-            self.net = tfl.fully_connected(self.X, n_hidden_units, activation='relu')
+            self.net = tfl.fully_connected(self.net, n_hidden_units, activation='relu')
             self.net = tfl.dropout(self.net, dropout_keep)
 
         self.prediction = tfl.fully_connected(self.net, output_dim, activation='linear')
 
         # Backward propagation
         self.loss = tf.reduce_mean(tf.squared_difference(self.prediction, self.Y))
-        self.train = tf.train.GradientDescentOptimizer(0.001).minimize(self.loss)
+        self.train = tf.train.AdamOptimizer(0.001).minimize(self.loss)
 
         config = tf.ConfigProto(
             device_count={'GPU': GPU}
@@ -40,7 +45,7 @@ class Approximator:
             X, Y = func.sampleManyRandom(samplesize)
 
             # Train proportionally to dataset size
-            for i in range(epochs * (samplesize / batchsize + 1)):
+            for i in range(5 * (samplesize / batchsize + 1)):
 
                 bX, bY = sampleBatch(X, Y, batchsize)
 
@@ -50,6 +55,10 @@ class Approximator:
 
             # Evaluate
             err = self.eval(func)
+            print err, samplesize; exit()
+
+            #print err
+            #exit()
 
             if err < epsilon:
                 break
