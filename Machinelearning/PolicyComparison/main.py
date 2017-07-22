@@ -13,7 +13,7 @@ def printEnvInfo(env):
 
 def main():
 
-    #  1) Train reactive policy on chosen environment
+    # 1) Train reactive policy on chosen environment
 
     # Used environments list
     envlist = ["Ant-v1", "Hopper-v1", "HalfCheetah-v1", "Walker2d-v1"]
@@ -27,18 +27,17 @@ def main():
     # Make reactive policy
     rPol = ReactivePolicy(env)
 
-    # Make training algorithm
-    rAlgo = ReactiveTrainer(env, rPol)
-
-    # Train policy
+    # Params
     n_episodes = 1000
     max_iters = 160
-    rAlgo.train(n_episodes, max_iters)
+
+    # Train policy
+    rPol.train(n_episodes, max_iters)
 
     # Evaluate and visualize policy
     rPol.visualize()
 
-    #  2) Train recurrent policy on chosen environment
+    # 2) Train recurrent policy on chosen environment
 
     # Make simulation
 

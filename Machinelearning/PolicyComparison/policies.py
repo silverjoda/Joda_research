@@ -10,8 +10,14 @@ class ReactivePolicy:
         self.action_low = env.action_space.low
         self.action_high = env.action_space.high
 
+        # Make neural network policy model
+        self.makePolicy()
 
+    def makePolicy(self):
+        pass
 
+    def train(self, n_episodes, max_iters):
+        pass
 
 
     def visualize(self):
