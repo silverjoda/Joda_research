@@ -58,7 +58,6 @@ class GMM:
         return self.funlut[idx] + np.random.randn() * self.samplenoise
 
     def sampleManyRandom(self, n):
-        assert n <= self.res
         X = np.random.randint(0, self.res, size=(n))
         Y = self.funlut[X] + np.random.randn(n) * self.samplenoise
         return X, Y
@@ -78,5 +77,13 @@ def sampleBatch(X, Y, batchsize):
     # Random shuffle
     np.random.shuffle(rnd_ind)
 
+    # Random dataset
+    rndX = X[rnd_ind[:batchsize]]
+    rndY = Y[rnd_ind[:batchsize]]
+
+    # Expand dimension for tensorflow
+    rndX = np.expand_dims(rndX, 1)
+    rndY = np.expand_dims(rndY, 1)
+
     # Return random subset
-    return X[rnd_ind[:batchsize]], Y[rnd_ind[:batchsize]]
+    return rndX, rndY

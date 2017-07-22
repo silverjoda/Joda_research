@@ -33,7 +33,7 @@ class Approximator:
             X, Y = func.sampleManyRandom(samplesize)
 
             # Train proportionally to dataset size
-            for i in range(epochs * (samplesize / batchsize)):
+            for i in range(epochs * (samplesize / batchsize + 1)):
 
                 bX, bY = sampleBatch(X, Y, batchsize)
 
@@ -58,6 +58,10 @@ class Approximator:
 
         # Obtain batch of data
         X, Y = func.sampleManyRandom(n)
+
+        # Expand dimension for tensorflow
+        X = np.expand_dims(X, 1)
+        Y = np.expand_dims(Y, 1)
 
         # Evaluate MSE loss on test dataset
         mse = self.sess.run(self.loss, feed_dict={self.X: X, self.Y: Y})
