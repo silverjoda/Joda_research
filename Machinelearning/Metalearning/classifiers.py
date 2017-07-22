@@ -3,6 +3,9 @@ import tflearn as tfl
 import numpy as np
 from funcgenerators import sampleBatch
 
+# Define GPU usage
+GPU = 0
+
 class Approximator:
     def __init__(self, input_dim, output_dim, n_hidden, n_hidden_units, l2_decay, dropout_keep):
 
@@ -19,7 +22,11 @@ class Approximator:
         self.loss = tf.reduce_mean(tf.squared_difference(self.prediction, self.Y))
         self.train = tf.train.GradientDescentOptimizer(0.001).minimize(self.loss)
 
-        self.sess = tf.Session()
+        config = tf.ConfigProto(
+            device_count={'GPU': GPU}
+        )
+
+        self.sess = tf.Session(config=config)
 
     def fituntileps(self, func, epochs, batchsize, epsilon):
 
