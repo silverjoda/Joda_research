@@ -88,6 +88,7 @@ class Approximator:
 class GradNet:
     pass
 
+
 class QueryNet:
     pass
 
