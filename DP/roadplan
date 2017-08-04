@@ -4,7 +4,7 @@
 
 -----------------------------------------------------
 
-Q - Is there a difference between a learned reactive
+Q1 - Is there a difference between a learned reactive
 and recurrent policy? If not, can we somehow force
 an action heirarchy through auxilliary penalization
 functions?
@@ -26,7 +26,7 @@ the action space.
 
 -----------------------------------------------------
 
-Q - Can we learn a heirarchical model of an
+Q2 - Can we learn a heirarchical model of an
 agent/environment using NN?
 
 Exp1 - Pick a concrete dynamical model from mujoco
@@ -41,7 +41,7 @@ model on the same environment as Exp1.
 
 -----------------------------------------------------
 
-T - Study Pilco and its improvements. Attempt to find an
+T1 - Study Pilco and its improvements. Attempt to find an
 implementation in python and use as baseline.
 
 -----------------------------------------------------
