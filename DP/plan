@@ -1,0 +1,48 @@
+=====================================================
+====== Roadplan for diploma thesis experiments ======
+=====================================================
+
+-----------------------------------------------------
+
+Q - Is there a difference between a learned reactive
+and recurrent policy? If not, can we somehow force
+an action heirarchy through auxilliary penalization
+functions?
+
+Exp1 - Implement and train reactive and recurrent
+agents on 3 different mujoco environments in GYM.
+Compare and examine both policies: In particular
+we are interested in a) generalization and robustness
+of the two policies b) If the recurrent policy
+learns an action heirarchy
+
+Exp2 - Attempt to force an action heirarchy on the
+recurrent network by adding gradually increasing
+low-pass filters to the various layers. The final
+action policy will be either be the last action or
+a reactive network which takes in the actions from
+all the layers as input and maps to an action int
+the action space.
+
+-----------------------------------------------------
+
+Q - Can we learn a heirarchical model of an
+agent/environment using NN?
+
+Exp1 - Pick a concrete dynamical model from mujoco
+(or quadcopter simulation, should be easy)
+and using a trained policy and/or user input to
+attempt to learn a simple SxA -> S mapping.
+In particular we are interested in how many samples
+such a model takes and how well it generalizes.
+
+Exp2 - Attempt to learn a heirarchical (recurrent)
+model on the same environment as Exp1.
+
+-----------------------------------------------------
+
+T - Study Pilco and its improvements. Attempt to find an
+implementation in python and use as baseline.
+
+-----------------------------------------------------
+
