@@ -93,4 +93,4 @@ class Autoencoder:
         return self.sess.run(self.reconstruction, feed_dict={self.img: img})
 
 class Vencoder:
-    pass
+    pass#
