@@ -9,16 +9,13 @@ import urllib
 import gzip
 import cPickle
 from PIL import Image
+import time
 
 import matplotlib.pyplot as plt
-
-def _network():
-    pass
 
 
 def main():
 
-    # Create the autoencoder network
 
     # Create the dataset
     fname = 'mnist.pkl.gz'
@@ -38,34 +35,42 @@ def main():
     X_normalized = (X - mu) / sigma
     X_normalized = np.transpose(X_normalized, axes=[0,2,3,1])
 
-    n_episodes = 1000
-    batchsize = 64
+    batchsize = 128
+    n_episodes = 50000/batchsize
 
     # Train baseline autoencoder
     base_AE = Autoencoder([28,28], None)
 
+    t1 = time.time()
     for i in range(n_episodes):
         err = base_AE.train(X_normalized[i*batchsize:i*batchsize + batchsize])
         print("Episode {}/{}, err: {}".format(i, n_episodes, err))
+    print("Training of base_AE took: {}".format(time.time() - t1))
 
 
     # Train virtual autoencoder
     virt_AE = Vencoder([28, 28], None)
 
+    t1 = time.time()
     for i in range(n_episodes):
-        err = virt_AE.train(X_normalized[i:i + batchsize])
+        err = virt_AE.train(
+            X_normalized[i * batchsize:i * batchsize + batchsize])
         print("Episode {}/{}, err: {}".format(i, n_episodes, err))
+    print("Training of virt_AE took: {}".format(time.time() - t1))
 
     # Compare
-    rand_vec = np.random.randint(0,1000, size=(5))
+    rand_vec = np.random.randint(0, 1000, size=(5))
 
     imgs = X[rand_vec]
     imgs_norm = X_normalized[rand_vec]
 
     base_recon = base_AE.reconstruct(imgs_norm)
     base_recon = np.squeeze(base_recon, axis=3)
+    base_recon = (base_recon * sigma) + mu
+
     v_recon = virt_AE.reconstruct(imgs_norm)
     v_recon = np.squeeze(v_recon, axis=3)
+    v_recon = (v_recon * sigma) + mu
 
     fig = plt.figure()
     for i in range(5):
