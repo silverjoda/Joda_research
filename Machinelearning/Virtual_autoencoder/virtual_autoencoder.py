@@ -34,11 +34,14 @@ def main():
     print "mu, sigma:", mu, sigma
 
     X_normalized = (X - mu) / sigma
+    X_normalized = np.transpose(X_normalized, axes=[0,2,3,1])
 
-    # we need our target to be 1 dimensional
-    X_out = X_normalized.reshape((X_normalized.shape[0], -1))
+    # Train baseline autoencoder
 
-    pass
+    # Train virtual autoencoder
+
+    # Compare
+
 
 
 if __name__ == "__main__":
