@@ -10,6 +10,8 @@ import gzip
 import cPickle
 from PIL import Image
 
+import matplotlib.pyplot as plt
+
 def _network():
     pass
 
@@ -36,12 +38,47 @@ def main():
     X_normalized = (X - mu) / sigma
     X_normalized = np.transpose(X_normalized, axes=[0,2,3,1])
 
+    n_episodes = 1000
+    batchsize = 64
+
     # Train baseline autoencoder
+    base_AE = Autoencoder([28,28], None)
+
+    for i in range(n_episodes):
+        err = base_AE.train(X_normalized[i*batchsize:i*batchsize + batchsize])
+        print("Episode {}/{}, err: {}".format(i, n_episodes, err))
+
 
     # Train virtual autoencoder
+    virt_AE = Vencoder([28, 28], None)
+
+    for i in range(n_episodes):
+        err = virt_AE.train(X_normalized[i:i + batchsize])
+        print("Episode {}/{}, err: {}".format(i, n_episodes, err))
 
     # Compare
+    rand_vec = np.random.randint(0,1000, size=(5))
 
+    imgs = X[rand_vec]
+    imgs_norm = X_normalized[rand_vec]
+
+    base_recon = base_AE.reconstruct(imgs_norm)
+    base_recon = np.squeeze(base_recon, axis=3)
+    v_recon = virt_AE.reconstruct(imgs_norm)
+    v_recon = np.squeeze(v_recon, axis=3)
+
+    fig = plt.figure()
+    for i in range(5):
+        ax1 = fig.add_subplot(3, 5, i + 1)
+        ax1.imshow(imgs[i,0,:,:])
+
+        ax2 = fig.add_subplot(3, 5, i + 6)
+        ax2.imshow(base_recon[i,:,:])
+
+        ax3 = fig.add_subplot(3, 5, i + 11)
+        ax3.imshow(v_recon[i,:,:])
+
+    plt.show()
 
 
 if __name__ == "__main__":
