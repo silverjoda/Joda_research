@@ -83,7 +83,7 @@ def main():
         ax3 = fig.add_subplot(3, 5, i + 11)
         ax3.imshow(v_recon[i,:,:])
 
-    plt.show()
+    plt.show()#
 
 
 if __name__ == "__main__":
