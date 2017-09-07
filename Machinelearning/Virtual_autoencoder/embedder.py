@@ -69,7 +69,6 @@ class Autoencoder:
         self.embedding = conv3
 
 
-
         conv_up_1 = tfl.conv_2d_transpose(incoming=conv3,
                                           nb_filter=32,
                                           filter_size=3,
