@@ -1,5 +1,5 @@
 import tensorflow as tf
-import tflearn
+import tflearn as tfl
 
 class Autoencoder:
     def __init__(self, i_dim, e_dim):
@@ -16,7 +16,7 @@ class Autoencoder:
             self.learning_rate = 5e-4
 
             # Loss function
-            self.cost = tflearn.mean_square(self.X, self.reconstruction)
+            self.cost = tfl.mean_square(self.X, self.reconstruction)
 
             # Optimization Op
             self.optimize = tf.train.AdamOptimizer(self.learning_rate).minimize(
@@ -25,7 +25,7 @@ class Autoencoder:
             self.init = tf.global_variables_initializer()
 
         config = tf.ConfigProto(
-            device_count={'GPU': 0}
+            device_count={'GPU': 1}
         )
 
         self.sess = tf.Session(graph=self.g, config=config)
@@ -34,56 +34,69 @@ class Autoencoder:
     def create_embedder_network(self):
 
         # Input image
-        self.X = tflearn.input_data(shape=[None,
+        self.X = tfl.input_data(shape=[None,
                                         self.i_dim[0],
                                         self.i_dim[1],
                                         1])
 
         # Xavier initializer
-        conv_init = tflearn.initializations.xavier()
+        conv_init = tfl.initializations.xavier()
 
         # First convolutional layer
-        conv1 = tflearn.conv_2d(self.X, 16, 3, regularizer="L2",
+        conv1 = tfl.conv_2d(self.X, 32, 3, regularizer="L2",
                                 activation='relu', weights_init=conv_init,
-                                strides=(1, 2, 2, 1), padding='valid')
+                                strides=(1, 1, 1, 1), padding='valid')
+        conv1 = tfl.max_pool_2d(conv1,
+                                    kernel_size=(2, 2),
+                                    strides=(1, 2, 2, 1))
 
         # Second convolutional layer
-        conv2 = tflearn.conv_2d(conv1, 16, 3, regularizer="L2",
+        conv2 = tfl.conv_2d(conv1, 32, 3, regularizer="L2",
                                 activation='relu', weights_init=conv_init,
-                                strides=(1, 2, 2, 1), padding='same')
+                                strides=(1, 1, 1, 1), padding='same')
+        conv2 = tfl.max_pool_2d(conv2,
+                                    kernel_size=(2, 2),
+                                    strides=(1, 2, 2, 1))
 
         # third convolutional layer
-        conv3 = tflearn.conv_2d(conv2, 8, 3, regularizer="L2",
+        conv3 = tfl.conv_2d(conv2, 8, 3, regularizer="L2",
                                 activation='relu', weights_init=conv_init,
-                                strides=(1, 2, 2, 1), padding='same')
+                                strides=(1, 1, 1, 1), padding='same')
+        conv3 = tfl.max_pool_2d(conv3,
+                                    kernel_size=(2, 2),
+                                    strides=(1, 2, 2, 1))
 
         self.embedding = conv3
 
-        conv_up_1 = tflearn.layers.conv.conv_2d_transpose(incoming=conv3,
-          nb_filter=16, filter_size=3, output_shape=[self.i_dim[0]/4,
-                                                     self.i_dim[1]/4],
-                                                          strides=(1, 2, 2, 1),
-                                                          activation='tanh',
-                                                          weights_init=conv_init)
 
 
-        conv_up_2 = tflearn.layers.conv.conv_2d_transpose(incoming=conv_up_1,
-                                                          nb_filter=16,
+        conv_up_1 = tfl.conv_2d_transpose(incoming=conv3,
+                                          nb_filter=32,
+                                          filter_size=3,
+                                          output_shape=[int(self.i_dim[0]/4),
+                                                        int(self.i_dim[1]/4)],
+                                          strides=(1,2,2,1),
+                                          activation='tanh',
+                                          weights_init=conv_init)
+
+
+        conv_up_2 = tfl.conv_2d_transpose(incoming=conv_up_1,
+                                                          nb_filter=32,
                                                           filter_size=3,
                                                           output_shape=[
-                                                          self.i_dim[0] / 2,
-                                                          self.i_dim[1] / 2],
+                                                          int(self.i_dim[0] / 2),
+                                                          int(self.i_dim[1] / 2)],
                                                           strides=(1, 2, 2, 1),
                                                           activation='tanh',
                                                           weights_init=conv_init)
 
 
-        conv_up_3 = tflearn.layers.conv.conv_2d_transpose(incoming=conv_up_2,
+        conv_up_3 = tfl.conv_2d_transpose(incoming=conv_up_2,
                                                           nb_filter=1,
                                                           filter_size=3,
                                                           output_shape=[
-                                                              self.i_dim[0],
-                                                              self.i_dim[1]],
+                                                              int(self.i_dim[0]),
+                                                              int(self.i_dim[1])],
                                                           strides=(1, 2, 2, 1),
                                                           activation='tanh',
                                                           weights_init=conv_init)
@@ -116,10 +129,10 @@ class Vencoder:
 
             self.create_embedder_network()
 
-            self.learning_rate = 0.0005
+            self.learning_rate = 5e-4
 
             # Loss function
-            self.cost = tflearn.mean_square(self.X, self.reconstruction)
+            self.cost = tfl.mean_square(self.X, self.reconstruction)
 
             # Optimization Op
             self.optimize = tf.train.AdamOptimizer(self.learning_rate).minimize(
@@ -128,7 +141,7 @@ class Vencoder:
             self.init = tf.global_variables_initializer()
 
         config = tf.ConfigProto(
-            device_count={'GPU': 0}
+            device_count={'GPU': 1}
         )
 
         self.sess = tf.Session(graph=self.g, config=config)
@@ -137,32 +150,42 @@ class Vencoder:
     def create_embedder_network(self):
 
         # Input image
-        self.X = tflearn.input_data(shape=[None,
+        self.X = tfl.input_data(shape=[None,
                                         self.i_dim[0],
                                         self.i_dim[1],
                                         1])
 
         # Xavier initializer
-        conv_init = tflearn.initializations.xavier()
+        conv_init = tfl.initializations.xavier()
 
         # First convolutional layer
-        conv1 = tflearn.conv_2d(self.X, 16, 3, regularizer="L2",
+        conv1 = tfl.conv_2d(self.X, 32, 3, regularizer="L2",
                                 activation='relu', weights_init=conv_init,
-                                strides=(1, 2, 2, 1), padding='valid')
+                                strides=(1, 1, 1, 1), padding='valid')
+        conv1 = tfl.max_pool_2d(conv1,
+                                    kernel_size=(2,2),
+                                    strides=(1,2,2,1))
 
         # Second convolutional layer
-        conv2 = tflearn.conv_2d(conv1, 16, 3, regularizer="L2",
+        conv2 = tfl.conv_2d(conv1, 32, 3, regularizer="L2",
                                 activation='relu', weights_init=conv_init,
-                                strides=(1, 2, 2, 1), padding='same')
+                                strides=(1, 1, 1, 1), padding='same')
+        conv2 = tfl.max_pool_2d(conv2,
+                                    kernel_size=(2, 2),
+                                    strides=(1, 2, 2, 1))
+
+
 
         # third convolutional layer
-        conv3 = tflearn.conv_2d(conv2, 8, 3, regularizer="L2",
+        conv3 = tfl.conv_2d(conv2, 8, 3, regularizer="L2",
                                 activation='relu', weights_init=conv_init,
-                                strides=(1, 2, 2, 1), padding='same')
+                                strides=(1, 1, 1, 1), padding='same')
+        conv3 = tfl.max_pool_2d(conv3,
+                                    kernel_size=(2, 2),
+                                    strides=(1, 2, 2, 1))
 
         # Bottle neck layer
         self.embedding = conv3
-
 
         self.reconstruction = tf.gradients(ys=self.embedding, xs=self.X)
 

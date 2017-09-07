@@ -1,52 +1,36 @@
 import numpy as np
-import tensorflow as tf
-import tflearn as tfl
 from embedder import *
-
-import sys
-import os
-import urllib
-import gzip
-import cPickle
-from PIL import Image
-import time
-
+from sklearn.metrics import mean_squared_error
+from tensorflow.examples.tutorials.mnist import input_data
 import matplotlib.pyplot as plt
+import time
 
 
 def main():
 
+    mnist = input_data.read_data_sets('MNIST_data')
+    X, _ = mnist.train.images, mnist.train.labels
 
-    # Create the dataset
-    fname = 'mnist.pkl.gz'
-    if not os.path.isfile(fname):
-        testfile = urllib.URLopener()
-        testfile.retrieve("http://deeplearning.net/data/mnist/mnist.pkl.gz",
-                          fname)
-    f = gzip.open(fname, 'rb')
-    train_set, valid_set, test_set = cPickle.load(f)
-    f.close()
-    X, y = train_set
     X = X.reshape((-1, 1, 28, 28))
     mu, sigma = np.mean(X.flatten()), np.std(X.flatten())
 
-    print "mu, sigma:", mu, sigma
+    print("mu, sigma:", mu, sigma)
 
     X_normalized = (X - mu) / sigma
     X_normalized = np.transpose(X_normalized, axes=[0,2,3,1])
 
-    batchsize = 128
-    n_episodes = 50000/batchsize
+    batchsize = 64
+    n_episodes = 1000
 
     # Train baseline autoencoder
     base_AE = Autoencoder([28,28], None)
 
     t1 = time.time()
     for i in range(n_episodes):
-        err = base_AE.train(X_normalized[i*batchsize:i*batchsize + batchsize])
+        err = base_AE.train(
+            X_normalized[np.random.randint(0,50000, size=batchsize)])
         print("Episode {}/{}, err: {}".format(i, n_episodes, err))
     print("Training of base_AE took: {}".format(time.time() - t1))
-
 
     # Train virtual autoencoder
     virt_AE = Vencoder([28, 28], None)
@@ -54,7 +38,7 @@ def main():
     t1 = time.time()
     for i in range(n_episodes):
         err = virt_AE.train(
-            X_normalized[i * batchsize:i * batchsize + batchsize])
+            X_normalized[np.random.randint(0,50000, size=batchsize)])
         print("Episode {}/{}, err: {}".format(i, n_episodes, err))
     print("Training of virt_AE took: {}".format(time.time() - t1))
 
@@ -75,15 +59,21 @@ def main():
     fig = plt.figure()
     for i in range(5):
         ax1 = fig.add_subplot(3, 5, i + 1)
-        ax1.imshow(imgs[i,0,:,:])
+        ax1.imshow(imgs[i,0,:,:], cmap="gray")
 
         ax2 = fig.add_subplot(3, 5, i + 6)
-        ax2.imshow(base_recon[i,:,:])
+        ax2.imshow(base_recon[i,:,:],cmap="gray")
+        ax2.set_xlabel(imgmse(imgs[i,0,:,:], base_recon[i,:,:]))
 
         ax3 = fig.add_subplot(3, 5, i + 11)
-        ax3.imshow(v_recon[i,:,:])
+        ax3.imshow(v_recon[i,:,:],cmap="gray")
+        ax3.set_xlabel(imgmse(imgs[i,0,:,:], v_recon[i,:,:]))
 
     plt.show()#
+
+def imgmse(im1, im2):
+    return mean_squared_error(im1,im2)
+
 
 
 if __name__ == "__main__":
