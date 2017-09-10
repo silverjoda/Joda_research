@@ -20,7 +20,7 @@ def main():
     X_normalized = np.transpose(X_normalized, axes=[0,2,3,1])
 
     batchsize = 64
-    n_episodes = 1000
+    n_episodes = 2000
 
     # Train baseline autoencoder
     base_AE = Autoencoder([28,28], None)
@@ -36,11 +36,18 @@ def main():
     virt_AE = Vencoder([28, 28], None)
 
     t1 = time.time()
-    for i in range(n_episodes):
+    for i in range(int(n_episodes)):
         err = virt_AE.train(
             X_normalized[np.random.randint(0,50000, size=batchsize)])
         print("Episode {}/{}, err: {}".format(i, n_episodes, err))
     print("Training of virt_AE took: {}".format(time.time() - t1))
+
+    t1 = time.time()
+    for i in range(int(n_episodes)):
+        err = virt_AE.train_upconv_decoder(
+            X_normalized[np.random.randint(0, 50000, size=batchsize)])
+        print("Episode {}/{}, err: {}".format(i, n_episodes, err))
+    print("Training of virt_AE decoder took: {}".format(time.time() - t1))
 
     # Compare
     rand_vec = np.random.randint(0, 1000, size=(5))
@@ -56,18 +63,26 @@ def main():
     v_recon = np.squeeze(v_recon, axis=3)
     v_recon = (v_recon * sigma) + mu
 
+    v_recon_upconv = virt_AE.upconv_reconstruct(imgs_norm)
+    v_recon_upconv = np.squeeze(v_recon_upconv, axis=3)
+    v_recon_upconv = (v_recon_upconv * sigma) + mu
+
     fig = plt.figure()
     for i in range(5):
-        ax1 = fig.add_subplot(3, 5, i + 1)
+        ax1 = fig.add_subplot(4, 5, i + 1)
         ax1.imshow(imgs[i,0,:,:], cmap="gray")
 
-        ax2 = fig.add_subplot(3, 5, i + 6)
-        ax2.imshow(base_recon[i,:,:],cmap="gray")
+        ax2 = fig.add_subplot(4, 5, i + 6)
+        ax2.imshow(base_recon[i,:,:], cmap="gray")
         ax2.set_xlabel(imgmse(imgs[i,0,:,:], base_recon[i,:,:]))
 
-        ax3 = fig.add_subplot(3, 5, i + 11)
-        ax3.imshow(v_recon[i,:,:],cmap="gray")
+        ax3 = fig.add_subplot(4, 5, i + 11)
+        ax3.imshow(v_recon[i,:,:], cmap="gray")
         ax3.set_xlabel(imgmse(imgs[i,0,:,:], v_recon[i,:,:]))
+
+        ax4 = fig.add_subplot(4, 5, i + 16)
+        ax4.imshow(v_recon_upconv[i, :, :], cmap="gray")
+        ax4.set_xlabel(imgmse(imgs[i, 0, :, :], v_recon_upconv[i, :, :]))
 
     plt.show()#
 
