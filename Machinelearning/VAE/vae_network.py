@@ -3,9 +3,10 @@ import tflearn as tfl
 
 class VAE:
 
-    def __init__(self, in_dim, z_dim):
+    def __init__(self, in_dim, z_dim, lr):
         self.in_dim = in_dim
         self.z_dim = z_dim
+        self.lr = lr
 
         self.g = tf.Graph()
         with self.g.as_default():
@@ -41,13 +42,15 @@ class VAE:
 
     def _decoder(self, z, reuse=False):
         with tf.variable_scope("decoder", reuse=reuse):
+            w_init = tfl.initializations.xavier()
             deconv_1 = tfl.conv_2d_transpose(z,
                                              nb_filter=128,
                                              filter_size=3,
                                              output_shape=(3,3),
                                              strides=1,
                                              padding='same',
-                                             activation='relu')
+                                             activation='relu',
+                                             weights_init=w_init)
 
             deconv_2 = tfl.conv_2d_transpose(deconv_1,
                                              nb_filter=64,
@@ -55,7 +58,8 @@ class VAE:
                                              output_shape=(12, 12),
                                              strides=1,
                                              padding='same',
-                                             activation='relu')
+                                             activation='relu',
+                                             weights_init=w_init)
 
             deconv_3 = tfl.conv_2d_transpose(deconv_2,
                                              nb_filter=32,
@@ -63,7 +67,8 @@ class VAE:
                                              output_shape=(28, 28),
                                              strides=1,
                                              padding='same',
-                                             activation='relu')
+                                             activation='sigmoid',
+                                             weights_init=w_init)
 
         return deconv_3
 
@@ -76,7 +81,7 @@ class VAE:
 
         self.latent_loss = tf.contrib.distributions.kl(self.Q_dist, self.N)
         self.reconstruction_loss = tfl.mean_square(self.X, self.trn_recon)
-        self.optim = tf.train.AdamOptimizer(self.lr_ph).minimize(
+        self.optim = tf.train.AdamOptimizer(self.lr).minimize(
             self.reconstruction_loss + self.latent_loss)
 
 
