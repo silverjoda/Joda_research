@@ -10,8 +10,10 @@ class VAE:
         self.g = tf.Graph()
         with self.g.as_default():
             self.lr_ph = tf.placeholder(tf.float32)
+            self.z_rnd_ph = tf.placeholder(tf.float32, shape=(-1, self.z_dim))
             self._encoder()
-            self._decoder()
+            self.trn_reconstruction = self._decoder(self.X, reuse=False)
+            self.tst_reconstruction = self._decoder(self.z_rnd_ph, reuse=True)
             self._objective()
             self._init_op = tf.global_variables_initializer()
 
@@ -37,30 +39,33 @@ class VAE:
         self.z = self.mu + tf.multiply(eps, tf.exp(self.log_sig))
 
 
-    def _decoder(self):
+    def _decoder(self, z, reuse=False):
+        with tf.variable_scope("decoder", reuse=reuse):
+            deconv_1 = tfl.conv_2d_transpose(z,
+                                             nb_filter=128,
+                                             filter_size=3,
+                                             output_shape=(3,3),
+                                             strides=1,
+                                             padding='same',
+                                             activation='relu')
 
-        deconv_1 = tfl.conv_2d_transpose(self.z,
-                                         nb_filter=128,
-                                         filter_size=3,
-                                         output_shape=(3,3),
-                                         strides=1,
-                                         padding='same')
+            deconv_2 = tfl.conv_2d_transpose(deconv_1,
+                                             nb_filter=64,
+                                             filter_size=3,
+                                             output_shape=(12, 12),
+                                             strides=1,
+                                             padding='same',
+                                             activation='relu')
 
-        deconv_2 = tfl.conv_2d_transpose(deconv_1,
-                                         nb_filter=64,
-                                         filter_size=3,
-                                         output_shape=(12, 12),
-                                         strides=1,
-                                         padding='same')
+            deconv_3 = tfl.conv_2d_transpose(deconv_2,
+                                             nb_filter=32,
+                                             filter_size=3,
+                                             output_shape=(28, 28),
+                                             strides=1,
+                                             padding='same',
+                                             activation='relu')
 
-        deconv_3 = tfl.conv_2d_transpose(deconv_2,
-                                         nb_filter=32,
-                                         filter_size=3,
-                                         output_shape=(28, 28),
-                                         strides=1,
-                                         padding='same')
-
-        self.reconstruction = deconv_3
+        return deconv_3
 
 
     def _objective(self):
@@ -74,14 +79,17 @@ class VAE:
         self.optim = tf.train.AdamOptimizer(self.lr_ph).minimize(
             self.reconstruction_loss + self.latent_loss)
 
+
     def train(self, X):
-        pass
+        fetches = [self.optim, self.reconstruction_loss, self.latent_loss]
+        _, mse, kl_loss = self.sess.run(fetches, feed_dict={self.X : X})
+
+        return mse, kl_loss
+
 
     def embed(self, X):
-        pass
-
-    def sample_random(self, X):
-        pass
+        return self.sess.run(self.z, feed_dict={self.X : X})
 
     def sample(self, z):
-        pass
+        return self.sess.run(self.tst_reconstruction,
+                             feed_dict={self.z_rnd_ph : z})
