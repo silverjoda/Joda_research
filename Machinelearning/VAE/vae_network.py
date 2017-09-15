@@ -60,7 +60,7 @@ class VAE:
                                                   padding='same')
 
             deconv_3 = tfl.conv_2d_transpose(incoming=deconv_2,
-                                             nb_filter=32,
+                                             nb_filter=1,
                                              filter_size=[3,3],
                                              output_shape=[28, 28],
                                              strides=2, activation=tf.nn.relu,
@@ -70,15 +70,20 @@ class VAE:
 
 
     def _objective(self):
-        self.N = tf.contrib.distributions.Normal(tf.zeros((self.z_dim)),
-                                                 tf.ones((self.z_dim)))
-        self.Q_dist = tf.contrib.distributions.Normal(self.mu,
-                                                      self.log_sig)
 
-        self.latent_loss = tf.contrib.distributions.kl(self.Q_dist, self.N)
+        # self.N = tf.contrib.distributions.Normal(tf.zeros((self.z_dim)),
+        #                                          tf.ones((self.z_dim)))
+        # self.Q_dist = tf.contrib.distributions.Normal(self.mu,
+        #                                               self.log_sig)
+        #
+        # self.latent_loss = tf.contrib.distributions.kl(self.Q_dist, self.N)
+
+        self.latent_loss = -.5 * tf.reduce_sum(
+            1. + self.log_sig - tf.pow(self.mu, 2) - tf.exp(self.log_sig),
+            reduction_indices=1)
         self.reconstruction_loss = tfl.mean_square(self.X, self.trn_recon)
-        self.optim = tf.train.AdamOptimizer(self.lr).minimize(
-            self.reconstruction_loss + self.latent_loss)
+        total_loss = tf.reduce_mean(self.reconstruction_loss + self.latent_loss)
+        self.optim = tf.train.AdamOptimizer(self.lr).minimize(total_loss)
 
 
     def train(self, X):
