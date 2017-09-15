@@ -1,6 +1,8 @@
 import tensorflow as tf
 import tflearn as tfl
 
+# TODO: Something wrong with standard AE pipeline. Reconstruction doesn't work
+
 class VAE:
 
     def __init__(self, in_dim, z_dim, lr):
@@ -36,13 +38,14 @@ class VAE:
         self.mu = tfl.fully_connected(flattened, self.z_dim, weights_init=w_init)
         self.log_sig = tfl.fully_connected(flattened, self.z_dim, weights_init=w_init)
 
-        eps = tf.random_normal(tf.shape(self.mu), name='epsilon')
+        #eps = tf.random_normal(tf.shape(self.mu), name='epsilon')
+        eps = tf.zeros(tf.shape(self.mu))
         self.z = self.mu + tf.multiply(eps, tf.exp(self.log_sig / 2))
 
 
     def _decoder(self, z, reuse=False):
         flat_conv = tf.reshape(z, (-1, 1, 1, self.z_dim))
-        with tf.variable_scope("decoder", reuse=reuse):
+        with tf.variable_scope('decoder', reuse=reuse):
             w_init = tf.contrib.layers.xavier_initializer()
             deconv_1 = tf.layers.conv2d_transpose(inputs=flat_conv,
                                                   filters=128,
@@ -94,7 +97,7 @@ class VAE:
             1. + self.log_sig - tf.pow(self.mu, 2) - tf.exp(self.log_sig))
         self.reconstruction_loss = tfl.mean_square(self.X, self.trn_recon)
         total_loss = tf.reduce_mean(self.reconstruction_loss + self.latent_loss)
-        self.optim = tf.train.AdamOptimizer(self.lr).minimize(total_loss)
+        self.optim = tf.train.AdamOptimizer(self.lr).minimize(self.reconstruction_loss)
 
 
     def train(self, X):

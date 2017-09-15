@@ -6,10 +6,10 @@ from vae_network import *
 
 def main():
 
-    n_episodes = 5000
+    n_episodes = 3000
     batchsize = 64
-    z_dim = 32
-    lr = 5e-4
+    z_dim = 64
+    lr = 1e-4
 
     vae = VAE([28,28,1], z_dim, lr)
 
@@ -32,8 +32,9 @@ def main():
     fig = plt.figure()
     for i in range(n_images):
         ax = fig.add_subplot(1,5,i+1)
-        ax.imshow(images[i])
+        ax.imshow(images[i], cmap='gray')
 
+    plt.show()
 
 if __name__ == "__main__":
     main()
