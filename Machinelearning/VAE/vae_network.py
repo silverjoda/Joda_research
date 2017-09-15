@@ -13,12 +13,12 @@ class VAE:
             self.lr_ph = tf.placeholder(tf.float32)
             self.z_rnd_ph = tf.placeholder(tf.float32, shape=(None, self.z_dim))
             self._encoder()
-            self.trn_recon = self._decoder(self.X, reuse=False)
+            self.trn_recon = self._decoder(self.z, reuse=False)
             self.tst_recon = self._decoder(self.z_rnd_ph, reuse=True)
             self._objective()
             self._init_op = tf.global_variables_initializer()
 
-        self.sess = tf.Session(self.g)
+        self.sess = tf.Session(graph=self.g)
         self.sess.run(self._init_op)
 
 
@@ -36,7 +36,7 @@ class VAE:
         self.mu = tfl.fully_connected(flattened, self.z_dim, weights_init=w_init)
         self.log_sig = tfl.fully_connected(flattened, self.z_dim, weights_init=w_init)
 
-        eps = tf.random_normal((-1, self.z_dim), name='epsilon')
+        eps = tf.random_normal(tf.shape(self.mu), name='epsilon')
         self.z = self.mu + tf.multiply(eps, tf.exp(self.log_sig / 2))
 
 
@@ -47,26 +47,38 @@ class VAE:
             deconv_1 = tf.layers.conv2d_transpose(inputs=flat_conv,
                                                   filters=128,
                                                   kernel_size=[3,3],
-                                                  strides=[1,1],
+                                                  strides=(1, 1),
+                                                  padding='valid',
                                                   activation=tf.nn.relu,
                                                   kernel_initializer=w_init)
 
             deconv_2 = tf.layers.conv2d_transpose(inputs=deconv_1,
                                                   filters=64,
                                                   kernel_size=[3, 3],
-                                                  strides=[2, 2],
+                                                  strides=(2, 2),
+                                                  padding='valid',
                                                   activation=tf.nn.relu,
-                                                  kernel_initializer=w_init,
-                                                  padding='same')
+                                                  kernel_initializer=w_init)
 
-            deconv_3 = tfl.conv_2d_transpose(incoming=deconv_2,
-                                             nb_filter=1,
-                                             filter_size=[3,3],
-                                             output_shape=[28, 28],
-                                             strides=2, activation=tf.nn.relu,
-                                             weights_init=w_init)
+            deconv_3 = tf.layers.conv2d_transpose(inputs=deconv_2,
+                                                  filters=32,
+                                                  kernel_size=[3, 3],
+                                                  strides=(2, 2),
+                                                  padding='valid',
+                                                  activation=tf.nn.relu,
+                                                  kernel_initializer=w_init)
 
-        return deconv_3
+            deconv_4 = tf.layers.conv2d_transpose(inputs=deconv_3,
+                                                  filters=1,
+                                                  kernel_size=[3, 3],
+                                                  strides=(2, 2),
+                                                  padding='valid',
+                                                  activation=tf.nn.relu,
+                                                  kernel_initializer=w_init)
+
+            deconv_4_legit = deconv_4[:,1:29,1:29,:]
+
+        return deconv_4_legit
 
 
     def _objective(self):
@@ -79,8 +91,7 @@ class VAE:
         # self.latent_loss = tf.contrib.distributions.kl(self.Q_dist, self.N)
 
         self.latent_loss = -.5 * tf.reduce_sum(
-            1. + self.log_sig - tf.pow(self.mu, 2) - tf.exp(self.log_sig),
-            reduction_indices=1)
+            1. + self.log_sig - tf.pow(self.mu, 2) - tf.exp(self.log_sig))
         self.reconstruction_loss = tfl.mean_square(self.X, self.trn_recon)
         total_loss = tf.reduce_mean(self.reconstruction_loss + self.latent_loss)
         self.optim = tf.train.AdamOptimizer(self.lr).minimize(total_loss)

@@ -6,20 +6,19 @@ from vae_network import *
 
 def main():
 
-    n_episodes = 1000
+    n_episodes = 5000
     batchsize = 64
     z_dim = 32
     lr = 5e-4
 
     vae = VAE([28,28,1], z_dim, lr)
 
-    exit()
-
     # Train
     for i in range(n_episodes):
-        batch = mnist.train.next_batch(batchsize)
-        mse, kl_loss = vae.train(batch)
-        if i % 10 == 0:
+        X, _ = mnist.train.next_batch(batchsize)
+        X_tf = np.reshape(X, [batchsize, 28, 28, 1])
+        mse, kl_loss = vae.train(X_tf)
+        if i % 100 == 0:
             print "Training ep {}/{}, mse: {}, kl_loss: {}".\
                 format(i, n_episodes, mse, kl_loss)
 
