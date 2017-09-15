@@ -11,7 +11,9 @@ def main():
     z_dim = 32
     lr = 5e-4
 
-    vae = VAE((28,28,1), z_dim, lr)
+    vae = VAE([28,28,1], z_dim, lr)
+
+    exit()
 
     # Train
     for i in range(n_episodes):

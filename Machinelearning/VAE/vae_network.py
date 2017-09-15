@@ -11,7 +11,7 @@ class VAE:
         self.g = tf.Graph()
         with self.g.as_default():
             self.lr_ph = tf.placeholder(tf.float32)
-            self.z_rnd_ph = tf.placeholder(tf.float32, shape=(-1, self.z_dim))
+            self.z_rnd_ph = tf.placeholder(tf.float32, shape=(None, self.z_dim))
             self._encoder()
             self.trn_recon = self._decoder(self.X, reuse=False)
             self.tst_recon = self._decoder(self.z_rnd_ph, reuse=True)
@@ -33,41 +33,37 @@ class VAE:
         l3 = tfl.max_pool_2d(l3, [2, 2], strides=2)
         flattened = tfl.flatten(l3, 'flattened')
 
-        self.mu = tf.layers.dense(flattened, self.z_dim, w_init)
-        self.log_sig = tf.layers.dense(flattened, self.z_dim, w_init)
+        self.mu = tfl.fully_connected(flattened, self.z_dim, weights_init=w_init)
+        self.log_sig = tfl.fully_connected(flattened, self.z_dim, weights_init=w_init)
 
         eps = tf.random_normal((-1, self.z_dim), name='epsilon')
         self.z = self.mu + tf.multiply(eps, tf.exp(self.log_sig / 2))
 
 
     def _decoder(self, z, reuse=False):
+        flat_conv = tf.reshape(z, (-1, 1, 1, self.z_dim))
         with tf.variable_scope("decoder", reuse=reuse):
-            w_init = tfl.initializations.xavier()
-            deconv_1 = tfl.conv_2d_transpose(z,
-                                             nb_filter=128,
-                                             filter_size=3,
-                                             output_shape=(3,3),
-                                             strides=1,
-                                             padding='same',
-                                             activation='relu',
-                                             weights_init=w_init)
+            w_init = tf.contrib.layers.xavier_initializer()
+            deconv_1 = tf.layers.conv2d_transpose(inputs=flat_conv,
+                                                  filters=128,
+                                                  kernel_size=[3,3],
+                                                  strides=[1,1],
+                                                  activation=tf.nn.relu,
+                                                  kernel_initializer=w_init)
 
-            deconv_2 = tfl.conv_2d_transpose(deconv_1,
-                                             nb_filter=64,
-                                             filter_size=3,
-                                             output_shape=(12, 12),
-                                             strides=1,
-                                             padding='same',
-                                             activation='relu',
-                                             weights_init=w_init)
+            deconv_2 = tf.layers.conv2d_transpose(inputs=deconv_1,
+                                                  filters=64,
+                                                  kernel_size=[3, 3],
+                                                  strides=[2, 2],
+                                                  activation=tf.nn.relu,
+                                                  kernel_initializer=w_init,
+                                                  padding='same')
 
-            deconv_3 = tfl.conv_2d_transpose(deconv_2,
+            deconv_3 = tfl.conv_2d_transpose(incoming=deconv_2,
                                              nb_filter=32,
-                                             filter_size=3,
-                                             output_shape=(28, 28),
-                                             strides=1,
-                                             padding='same',
-                                             activation='sigmoid',
+                                             filter_size=[3,3],
+                                             output_shape=[28, 28],
+                                             strides=2, activation=tf.nn.relu,
                                              weights_init=w_init)
 
         return deconv_3
