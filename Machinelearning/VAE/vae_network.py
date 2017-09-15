@@ -12,8 +12,8 @@ class VAE:
             self.lr_ph = tf.placeholder(tf.float32)
             self.z_rnd_ph = tf.placeholder(tf.float32, shape=(-1, self.z_dim))
             self._encoder()
-            self.trn_reconstruction = self._decoder(self.X, reuse=False)
-            self.tst_reconstruction = self._decoder(self.z_rnd_ph, reuse=True)
+            self.trn_recon = self._decoder(self.X, reuse=False)
+            self.tst_recon = self._decoder(self.z_rnd_ph, reuse=True)
             self._objective()
             self._init_op = tf.global_variables_initializer()
 
@@ -36,7 +36,7 @@ class VAE:
         self.log_sig = tf.layers.dense(flattened, self.z_dim, w_init)
 
         eps = tf.random_normal((-1, self.z_dim), name='epsilon')
-        self.z = self.mu + tf.multiply(eps, tf.exp(self.log_sig))
+        self.z = self.mu + tf.multiply(eps, tf.exp(self.log_sig / 2))
 
 
     def _decoder(self, z, reuse=False):
@@ -75,7 +75,7 @@ class VAE:
                                                       self.log_sig)
 
         self.latent_loss = tf.contrib.distributions.kl(self.Q_dist, self.N)
-        self.reconstruction_loss = tfl.mean_square(self.X, self.reconstruction)
+        self.reconstruction_loss = tfl.mean_square(self.X, self.trn_recon)
         self.optim = tf.train.AdamOptimizer(self.lr_ph).minimize(
             self.reconstruction_loss + self.latent_loss)
 
@@ -90,6 +90,7 @@ class VAE:
     def embed(self, X):
         return self.sess.run(self.z, feed_dict={self.X : X})
 
+
     def sample(self, z):
-        return self.sess.run(self.tst_reconstruction,
+        return self.sess.run(self.tst_recon,
                              feed_dict={self.z_rnd_ph : z})
