@@ -36,11 +36,10 @@ class VAE:
         flattened = tfl.flatten(l3, 'flattened')
 
         self.mu = tfl.fully_connected(flattened, self.z_dim, weights_init=w_init)
-        self.log_sig = tfl.fully_connected(flattened, self.z_dim, weights_init=w_init)
+        self.log_sig_sq = tfl.fully_connected(flattened, self.z_dim, weights_init=w_init)
 
-        #eps = tf.random_normal(tf.shape(self.mu), name='epsilon')
-        eps = tf.zeros(tf.shape(self.mu))
-        self.z = self.mu + tf.multiply(eps, tf.exp(self.log_sig / 2))
+        eps = tf.random_normal(tf.shape(self.log_sig_sq), mean=0, stddev=1, name='epsilon')
+        self.z = self.mu + tf.multiply(tf.exp(0.5 * self.log_sig_sq), eps)
 
 
     def _decoder(self, z, reuse=False):
@@ -49,55 +48,38 @@ class VAE:
             w_init = tf.contrib.layers.xavier_initializer()
             deconv_1 = tf.layers.conv2d_transpose(inputs=flat_conv,
                                                   filters=128,
-                                                  kernel_size=[3,3],
+                                                  kernel_size=[7,7],
                                                   strides=(1, 1),
                                                   padding='valid',
                                                   activation=tf.nn.relu,
                                                   kernel_initializer=w_init)
 
             deconv_2 = tf.layers.conv2d_transpose(inputs=deconv_1,
-                                                  filters=64,
+                                                  filters=32,
                                                   kernel_size=[3, 3],
                                                   strides=(2, 2),
-                                                  padding='valid',
+                                                  padding='same',
                                                   activation=tf.nn.relu,
                                                   kernel_initializer=w_init)
 
             deconv_3 = tf.layers.conv2d_transpose(inputs=deconv_2,
-                                                  filters=32,
-                                                  kernel_size=[3, 3],
-                                                  strides=(2, 2),
-                                                  padding='valid',
-                                                  activation=tf.nn.relu,
-                                                  kernel_initializer=w_init)
-
-            deconv_4 = tf.layers.conv2d_transpose(inputs=deconv_3,
                                                   filters=1,
                                                   kernel_size=[3, 3],
                                                   strides=(2, 2),
-                                                  padding='valid',
+                                                  padding='same',
                                                   activation=tf.nn.relu,
                                                   kernel_initializer=w_init)
 
-            deconv_4_legit = deconv_4[:,1:29,1:29,:]
-
-        return deconv_4_legit
+        return deconv_3
 
 
     def _objective(self):
-
-        # self.N = tf.contrib.distributions.Normal(tf.zeros((self.z_dim)),
-        #                                          tf.ones((self.z_dim)))
-        # self.Q_dist = tf.contrib.distributions.Normal(self.mu,
-        #                                               self.log_sig)
-        #
-        # self.latent_loss = tf.contrib.distributions.kl(self.Q_dist, self.N)
-
-        self.latent_loss = -.5 * tf.reduce_sum(
-            1. + self.log_sig - tf.pow(self.mu, 2) - tf.exp(self.log_sig))
-        self.reconstruction_loss = tfl.mean_square(self.X, self.trn_recon)
+        self.latent_loss = -.5 * tf.reduce_sum(1 + self.log_sig_sq
+                                           - tf.square(self.mu)
+                                           - tf.exp(self.log_sig_sq), 1)
+        self.reconstruction_loss = tfl.mean_square(self.trn_recon, self.X)
         total_loss = tf.reduce_mean(self.reconstruction_loss + self.latent_loss)
-        self.optim = tf.train.AdamOptimizer(self.lr).minimize(self.reconstruction_loss)
+        self.optim = tf.train.AdamOptimizer(self.lr).minimize(total_loss)
 
 
     def train(self, X):
@@ -109,6 +91,10 @@ class VAE:
 
     def embed(self, X):
         return self.sess.run(self.z, feed_dict={self.X : X})
+
+
+    def reconstruct(self, X):
+        return self.sess.run(self.trn_recon, feed_dict={self.X : X})
 
 
     def sample(self, z):

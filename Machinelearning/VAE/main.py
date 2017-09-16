@@ -6,7 +6,7 @@ from vae_network import *
 
 def main():
 
-    n_episodes = 3000
+    n_episodes = 1000
     batchsize = 64
     z_dim = 64
     lr = 1e-4
@@ -25,14 +25,24 @@ def main():
     # Sample images
     n_images = 5
     z = np.random.randn(n_images, z_dim)
-    images = vae.sample(z)
-    images = np.squeeze(images, axis=3)
+    samples = vae.sample(z)
+    samples = np.squeeze(samples, axis=3)
+
+    # Check autoencoder
+    X, _ = mnist.train.next_batch(n_images)
+    X_tf = np.reshape(X, [n_images, 28, 28, 1])
+    recons = vae.reconstruct(X_tf)
+    recons = np.squeeze(recons, axis=3)
+
 
     # Plot samples
     fig = plt.figure()
     for i in range(n_images):
-        ax = fig.add_subplot(1,5,i+1)
-        ax.imshow(images[i], cmap='gray')
+        ax = fig.add_subplot(2, 5, i + 1)
+        ax.imshow(samples[i], cmap='gray')
+
+        ax = fig.add_subplot(2, 5, i + 1 + n_images)
+        ax.imshow(recons[i], cmap='gray')
 
     plt.show()
 
