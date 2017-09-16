@@ -1,7 +1,7 @@
 import tensorflow as tf
 import tflearn as tfl
 
-# TODO: Something wrong with standard AE pipeline. Reconstruction doesn't work
+# TODO: Doesn't work properly
 
 class VAE:
 
@@ -20,7 +20,8 @@ class VAE:
             self._objective()
             self._init_op = tf.global_variables_initializer()
 
-        self.sess = tf.Session(graph=self.g)
+        config = tf.ConfigProto(device_count={'GPU': 1})
+        self.sess = tf.Session(graph=self.g, config=config)
         self.sess.run(self._init_op)
 
 
@@ -77,6 +78,7 @@ class VAE:
         self.latent_loss = -.5 * tf.reduce_sum(1 + self.log_sig_sq
                                            - tf.square(self.mu)
                                            - tf.exp(self.log_sig_sq), 1)
+
         self.reconstruction_loss = tfl.mean_square(self.trn_recon, self.X)
         total_loss = tf.reduce_mean(self.reconstruction_loss + self.latent_loss)
         self.optim = tf.train.AdamOptimizer(self.lr).minimize(total_loss)
