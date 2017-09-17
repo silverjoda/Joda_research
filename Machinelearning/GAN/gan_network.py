@@ -63,8 +63,6 @@ class GAN:
                                                   padding='valid',
                                                   activation=tfl.leaky_relu,
                                                   kernel_initializer=w_init)
-            deconv_1 = tfl.batch_normalization(deconv_1)
-
 
             deconv_2 = tf.layers.conv2d_transpose(inputs=deconv_1,
                                                   filters=64,
@@ -73,7 +71,6 @@ class GAN:
                                                   padding='same',
                                                   activation=tfl.leaky_relu,
                                                   kernel_initializer=w_init)
-            deconv_2 = tfl.batch_normalization(deconv_2)
 
             deconv_3 = tf.layers.conv2d_transpose(inputs=deconv_2,
                                                   filters=1,
@@ -88,22 +85,23 @@ class GAN:
 
 
     def _discriminator(self, X, reuse=False):
-        X_noisy = tf.random_uniform(shape=tf.shape(X), maxval=0.3)
+        noise = tf.random_uniform(shape=tf.shape(X), maxval=0.3)
+        X_noisy = X + noise
         with tf.variable_scope("discriminator", reuse=reuse):
             w_init = tfl.initializations.xavier()
-            l1 = tfl.conv_2d(X, 32, (3, 3), (1, 1), 'same',
+            l1 = tfl.conv_2d(X_noisy, 32, (3, 3), (1, 1), 'same',
                              activation='leaky_relu', weights_init=w_init)
-            l1 = tfl.batch_normalization(l1)
+
             l1 = tfl.avg_pool_2d(l1, [2, 2], strides=2)
 
             l2 = tfl.conv_2d(l1, 64, (3, 3), (1, 1), 'same', activation='leaky_relu',
                              weights_init=w_init)
-            l2 = tfl.batch_normalization(l2)
+
             l2 = tfl.avg_pool_2d(l2, [2, 2], strides=2)
 
             l3 = tfl.conv_2d(l2, 64, (3, 3), (1, 1), 'same', activation='leaky_relu',
                              weights_init=w_init)
-            l3 = tfl.batch_normalization(l3)
+
             l3 = tfl.avg_pool_2d(l3, [2, 2], strides=2)
             flattened = tfl.flatten(l3, 'flattened')
 

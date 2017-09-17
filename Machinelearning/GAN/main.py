@@ -7,15 +7,16 @@ from gan_network import *
 def main():
 
     n_episodes = 2000
-    batchsize = 128
-    z_dim = 32
+    batchsize = 64
+    z_dim = 64
     lr = 1e-4
 
     gan = GAN([28,28,1], z_dim, lr, mnist.train)
 
     # Train
     for i in range(n_episodes):
-        d_loss, g_loss = gan.train_vanilla(batchsize)
+        #d_loss, g_loss = gan.train_vanilla(batchsize)
+        d_loss, g_loss = gan.train_balanced(batchsize, 1)
         if i % 50 == 0:
             print "Training ep {}/{}, d_loss: {}, g_loss: {}".\
                 format(i, n_episodes, d_loss, g_loss)
