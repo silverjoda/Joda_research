@@ -1,21 +1,58 @@
-import tensorflow as tf#
+import tensorflow as tf
 import tflearn as tfl
+import numpy as np
 
 class GAN:
-    def __init__(self, in_dim, z_dim, lr):
+    def __init__(self, in_dim, z_dim, lr, mnistdataset):
         self.in_dim = in_dim
         self.z_dim = z_dim
         self.lr = lr
+        self.mnistdataset = mnistdataset
 
-        with tf.name_scope("placeholders"):
-            self.X = tf.placeholder(dtype=tf.float32, shape=[None, 28, 28, 1],
-                                    name='data_input')
-            self.Z = tf.placeholder(dtype=tf.float32, shape=[None, self.z_dim],
-                                    name='entropy')
+        self.g = tf.Graph()
+
+        with self.g.as_default():
+
+            with tf.name_scope("placeholders"):
+                self.X = tf.placeholder(dtype=tf.float32, shape=[None, 28, 28, 1],
+                                        name='data_input')
+                self.Z = tf.placeholder(dtype=tf.float32, shape=[None, self.z_dim],
+                                        name='entropy')
+
+            self.G = self._generator(self.Z)
+            self.D_real = self._discriminator(self.X)
+            self.D_fake = self._discriminator(self.G, reuse=True)
+
+            self.D_loss = -tf.reduce_mean(tf.log(self.D_real) + tf.log(1 - self.D_fake))
+            self.G_loss = -tf.reduce_mean(tf.log(self.D_fake))
+
+            self.D_vars = tf.get_collection(key=tf.GraphKeys.GLOBAL_VARIABLES,
+                                       scope='discriminator')
+            self.G_vars = tf.get_collection(key=tf.GraphKeys.GLOBAL_VARIABLES,
+                                       scope='generator')
+
+            self.D_optim = tf.train.AdamOptimizer(self.lr).minimize(self.D_loss,
+                                                                    var_list=self.D_vars)
+            self.G_optim = tf.train.AdamOptimizer(self.lr).minimize(self.G_loss,
+                                                                    var_list=self.G_vars)
+
+            tf.summary.image('generations', self.G)
+            tf.summary.scalar('d_loss', self.D_loss)
+            tf.summary.scalar('g_loss', self.G_loss)
+            self.merged = tf.summary.merge_all()
 
 
-    def _generator(self, z):
-        z_rs = tf.reshape(z, (-1, 1, 1, self.z_dim))
+            self._init_op = tf.global_variables_initializer()
+
+        self.writer = tf.summary.FileWriter('/tmp/tensorboard/gan/1',
+                                            graph=self.g)
+
+        self.sess = tf.Session(graph=self.g)
+        self.sess.run(self._init_op)
+
+
+    def _generator(self, Z):
+        z_rs = tf.reshape(Z, (-1, 1, 1, self.z_dim))
         with tf.variable_scope('generator'):
             w_init = tf.contrib.layers.xavier_initializer()
             deconv_1 = tf.layers.conv2d_transpose(inputs=z_rs,
@@ -45,7 +82,7 @@ class GAN:
         return deconv_3
 
 
-    def _discriminator(self, X, reuse):
+    def _discriminator(self, X, reuse=False):
         with tf.variable_scope("discriminator", reuse=reuse):
             w_init = tfl.initializations.xavier()
             l1 = tfl.conv_2d(X, 32, (3, 3), (1, 1), 'same',
@@ -66,9 +103,48 @@ class GAN:
         return p_data
 
 
-    def train(self):
-        pass
+    def train(self, batchsize):
 
+        while True:
+            X = self._getBatch(batchsize)
+            d_loss, g_loss = self._train_D(X)
+
+            if d_loss < g_loss: break
+
+        while True:
+            X = self._getBatch(batchsize)
+            d_loss, g_loss = self._train_G(X)
+
+            if d_loss > g_loss: break
+
+        return d_loss, g_loss
+
+    def _train_D(self, X):
+        z = np.random.randn(len(X), self.z_dim)
+        d_loss, g_loss = self.sess.run([self.D_optim, self.D_loss, self.G_loss],
+                                  feed_dict={self.Z: z, self.X: X})
+
+        return d_loss, g_loss
+
+    def _train_G(self, X):
+        z = np.random.randn(len(X), self.z_dim)
+        d_loss, g_loss = self.sess.run([self.G_optim, self.D_loss, self.G_loss],
+                                  feed_dict={self.Z: z, self.X : X})
+
+        return d_loss, g_loss
+
+    def summarize(self, X):
+        z = np.random.randn(len(X), self.z_dim)
+        summary = self.sess.run(self.merged, feed_dict={self.X : X, self.Z : z})
+        self.writer.add_summary(summary)
 
     def generate(self, z):
-        pass
+        return self.sess.run(self.G, feed_dict={self.Z : z})
+
+    def _getBatch(self, batchsize):
+        X, _ = self.mnistdataset.next_batch(batchsize)
+        X_tf = np.reshape(X, [batchsize, 28, 28, 1])
+        return X_tf
+
+    def _makeNoise(self, dims):
+        return np.random.randn(*dims)
