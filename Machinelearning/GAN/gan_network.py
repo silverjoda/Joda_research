@@ -24,7 +24,9 @@ class GAN:
             self.D_fake = self._discriminator(self.G, reuse=True)
 
             self.D_loss = -tf.reduce_mean(tf.log(self.D_real) + tf.log(1 - self.D_fake))
-            self.G_loss = -tf.reduce_mean(tf.log(self.D_fake))
+            self.G_loss = -tf.reduce_mean(tf.log(self.D_fake)
+                                          # + tf.log(1 - self.D_real)
+                                          )
 
             self.D_vars = tf.get_collection(key=tf.GraphKeys.GLOBAL_VARIABLES,
                                        scope='discriminator')
@@ -39,9 +41,8 @@ class GAN:
             tf.summary.image('generations', self.G)
             tf.summary.scalar('d_loss', self.D_loss)
             tf.summary.scalar('g_loss', self.G_loss)
+
             self.merged = tf.summary.merge_all()
-
-
             self._init_op = tf.global_variables_initializer()
 
         self.writer = tf.summary.FileWriter('/tmp/tensorboard/gan/1',
@@ -56,79 +57,103 @@ class GAN:
         with tf.variable_scope('generator'):
             w_init = tf.contrib.layers.xavier_initializer()
             deconv_1 = tf.layers.conv2d_transpose(inputs=z_rs,
-                                                  filters=128,
+                                                  filters=256,
                                                   kernel_size=[7, 7],
                                                   strides=(1, 1),
                                                   padding='valid',
-                                                  activation=tf.nn.relu,
+                                                  activation=tfl.leaky_relu,
                                                   kernel_initializer=w_init)
+            deconv_1 = tfl.batch_normalization(deconv_1)
+
 
             deconv_2 = tf.layers.conv2d_transpose(inputs=deconv_1,
-                                                  filters=32,
+                                                  filters=64,
                                                   kernel_size=[3, 3],
                                                   strides=(2, 2),
                                                   padding='same',
-                                                  activation=tf.nn.relu,
+                                                  activation=tfl.leaky_relu,
                                                   kernel_initializer=w_init)
+            deconv_2 = tfl.batch_normalization(deconv_2)
 
             deconv_3 = tf.layers.conv2d_transpose(inputs=deconv_2,
                                                   filters=1,
                                                   kernel_size=[3, 3],
                                                   strides=(2, 2),
                                                   padding='same',
-                                                  activation=tf.nn.relu,
+                                                  activation=tfl.leaky_relu,
                                                   kernel_initializer=w_init)
+
 
         return deconv_3
 
 
     def _discriminator(self, X, reuse=False):
+        X_noisy = tf.random_uniform(shape=tf.shape(X), maxval=0.3)
         with tf.variable_scope("discriminator", reuse=reuse):
             w_init = tfl.initializations.xavier()
             l1 = tfl.conv_2d(X, 32, (3, 3), (1, 1), 'same',
-                             activation='relu', weights_init=w_init)
-            l1 = tfl.max_pool_2d(l1, [2, 2], strides=2)
-            l2 = tfl.conv_2d(l1, 32, (3, 3), (1, 1), 'same', activation='relu',
+                             activation='leaky_relu', weights_init=w_init)
+            l1 = tfl.batch_normalization(l1)
+            l1 = tfl.avg_pool_2d(l1, [2, 2], strides=2)
+
+            l2 = tfl.conv_2d(l1, 64, (3, 3), (1, 1), 'same', activation='leaky_relu',
                              weights_init=w_init)
-            l2 = tfl.max_pool_2d(l2, [2, 2], strides=2)
-            l3 = tfl.conv_2d(l2, 32, (3, 3), (1, 1), 'same', activation='relu',
+            l2 = tfl.batch_normalization(l2)
+            l2 = tfl.avg_pool_2d(l2, [2, 2], strides=2)
+
+            l3 = tfl.conv_2d(l2, 64, (3, 3), (1, 1), 'same', activation='leaky_relu',
                              weights_init=w_init)
-            l3 = tfl.max_pool_2d(l3, [2, 2], strides=2)
+            l3 = tfl.batch_normalization(l3)
+            l3 = tfl.avg_pool_2d(l3, [2, 2], strides=2)
             flattened = tfl.flatten(l3, 'flattened')
 
-            p_data = tfl.fully_connected(flattened, 1,
+            dropped = tfl.dropout(flattened, keep_prob=0.7)
+
+            fc1 = tfl.fully_connected(dropped, 32,
+                                      weights_init=w_init,
+                                      activation='leaky_relu')
+
+            p_data = tfl.fully_connected(fc1, 1,
                                           weights_init=w_init,
                                           activation='sigmoid')
 
         return p_data
 
 
-    def train(self, batchsize):
+    def train_vanilla(self, batchsize):
+        X = self._getBatch(batchsize)
+        d_loss, _ = self._train_D(X)
+        X = self._getBatch(batchsize)
+        _, g_loss = self._train_G(X)
+
+        return d_loss, g_loss
+
+    def train_balanced(self, batchsize, lam):
 
         while True:
             X = self._getBatch(batchsize)
             d_loss, g_loss = self._train_D(X)
 
-            if d_loss < g_loss: break
+            if d_loss < lam*g_loss: break
 
         while True:
             X = self._getBatch(batchsize)
             d_loss, g_loss = self._train_G(X)
 
-            if d_loss > g_loss: break
+            if d_loss > lam*g_loss: break
 
         return d_loss, g_loss
 
     def _train_D(self, X):
         z = np.random.randn(len(X), self.z_dim)
-        d_loss, g_loss = self.sess.run([self.D_optim, self.D_loss, self.G_loss],
+        _, d_loss, g_loss = self.sess.run([self.D_optim, self.D_loss, self.G_loss],
                                   feed_dict={self.Z: z, self.X: X})
 
         return d_loss, g_loss
 
     def _train_G(self, X):
         z = np.random.randn(len(X), self.z_dim)
-        d_loss, g_loss = self.sess.run([self.G_optim, self.D_loss, self.G_loss],
+        _, d_loss, g_loss = self.sess.run([self.G_optim, self.D_loss, self.G_loss],
                                   feed_dict={self.Z: z, self.X : X})
 
         return d_loss, g_loss
