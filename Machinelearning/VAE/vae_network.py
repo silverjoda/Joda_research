@@ -28,11 +28,11 @@ class VAE:
     def _encoder(self):
         self.X = tf.placeholder(tf.float32, [None] + self.in_dim, 'X')
         w_init = tfl.initializations.xavier()
-        l1 = tfl.conv_2d(self.X, 32, (3,3), (1,1), 'same', activation='relu', weights_init=w_init)
+        l1 = tfl.conv_2d(self.X, 32, (3,3), (1,1), 'same', activation='tanh', weights_init=w_init)
         l1 = tfl.max_pool_2d(l1, [2, 2], strides=2)
-        l2 = tfl.conv_2d(l1, 32, (3, 3), (1, 1), 'same', activation='relu', weights_init=w_init)
+        l2 = tfl.conv_2d(l1, 32, (3, 3), (1, 1), 'same', activation='tanh', weights_init=w_init)
         l2 = tfl.max_pool_2d(l2, [2, 2], strides=2)
-        l3 = tfl.conv_2d(l2, 32, (3, 3), (1, 1), 'same', activation='relu', weights_init=w_init)
+        l3 = tfl.conv_2d(l2, 32, (3, 3), (1, 1), 'same', activation='tanh', weights_init=w_init)
         l3 = tfl.max_pool_2d(l3, [2, 2], strides=2)
         flattened = tfl.flatten(l3, 'flattened')
 
