@@ -10,8 +10,12 @@ class AudioVizNetVer1:
     def __init__(self, sample_length):
 
         self.sample_length = sample_length
+        self.g = tf.get_default_graph()
 
-        self._makenet()
+        self.datain, self.out = self._makenet()
+        self.loss = tfl.mean_square(self.datain, self.out)
+        self.optim = tf.train.AdamOptimizer(1e-4).minimize(self.loss)
+
         self.sess = tf.Session()
 
 
@@ -46,52 +50,58 @@ class AudioVizNetVer1:
                              regularizer='L2',
                              name='l3_aud')
 
-        l1_enc_f = tfl.conv_2d_transpose(incoming=l3_aud,
-                                         nb_filter=16,
-                                         filter_size=[1, 1],
-                                         strides=[1,1,1,1],
-                                         output_shape=[3, 3],
-                                         padding='valid',
-                                         activation='relu',
-                                         name='l1_enc_f')
 
-        l2_enc_f = tfl.conv_2d_transpose(incoming=l1_enc_f,
-                                         nb_filter=16,
-                                         filter_size=[2, 2],
-                                         strides=[1, 1, 1, 1],
-                                         output_shape=[6, 6],
-                                         padding='valid',
-                                         activation='relu',
-                                         name='l2_enc_f')
+        l1_enc_f = tf.layers.conv2d_transpose(inputs=l3_aud,
+                                              filters=16,
+                                              kernel_size=[3, 3],
+                                              strides=(1, 1),
+                                              padding='valid',
+                                              activation='relu',
+                                              name='l1_enc_f')
 
-        l3_enc_f = tfl.conv_2d_transpose(incoming=l2_enc_f,
-                                         nb_filter=16,
-                                         filter_size=[3, 3],
-                                         strides=[1, 2, 2, 1],
-                                         output_shape=[12, 12],
-                                         padding='valid',
-                                         activation='relu',
-                                         name='l3_enc_f')
+        l2_enc_f = tf.layers.conv2d_transpose(inputs=l1_enc_f,
+                                              filters=16,
+                                              kernel_size=[3, 3],
+                                              strides=(2, 2),
+                                              padding='valid',
+                                              activation='relu',
+                                              name='l2_enc_f')
 
-        l4_enc_f = tfl.conv_2d_transpose(incoming=l3_enc_f,
-                                         nb_filter=16,
-                                         filter_size=[3, 3],
-                                         strides=[1, 3, 3, 1],
-                                         output_shape=[36, 36],
-                                         padding='valid',
-                                         activation='relu',
-                                         name='l4_enc_f')
+        l3_enc_f = tf.layers.conv2d_transpose(inputs=l2_enc_f,
+                                              filters=16,
+                                              kernel_size=[3, 3],
+                                              strides=(2, 2),
+                                              padding='valid',
+                                              activation='relu',
+                                              name='l3_enc_f')
 
-        self.frame = tfl.conv_2d_transpose(incoming=l4_enc_f,
-                                         nb_filter=16,
-                                         filter_size=[3, 3],
-                                         strides=[1, 3, 3, 1],
-                                         output_shape=[128, 128],
-                                         padding='valid',
-                                         activation='relu',
-                                         name='l5_enc_f')
+        l4_enc_f = tf.layers.conv2d_transpose(inputs=l3_enc_f,
+                                              filters=16,
+                                              kernel_size=[3, 3],
+                                              strides=(2, 2),
+                                              padding='valid',
+                                              activation='relu',
+                                              name='l4_enc_f')
+
+        self.frame = l4_enc_f
 
         # Now turn frame back into audio
+        l1_dec = tfl.conv_2d(l4_enc_f, 16, (3,3), (2,2), padding='valid', activation='relu')
+        l2_dec = tfl.conv_2d(l1_dec, 16, (3, 3), (2, 2), padding='valid', activation='relu')
+        l3_dec = tfl.conv_2d(l2_dec, 16, (3, 3), (2, 2), padding='valid', activation='relu')
+        l4_dec = tfl.conv_2d(l3_dec, 8, (3, 3), (2, 2), padding='valid', activation='relu')
+
+        conv_flat = tfl.flatten(l4_dec)
+        conv_flat = tf.expand_dims(conv_flat, 1)
+        conv_flat = tf.expand_dims(conv_flat, 3)
+
+        l1_aud_dec = tf.layers.conv2d_transpose(l4_dec, 16, (1,3), (1,3), activation='relu')
+        l2_aud_dec = tf.layers.conv2d_transpose(l4_dec, 16, (1, 3), (1, 3), activation='relu')
+        l3_aud_dec = tf.layers.conv2d_transpose(l4_dec, 16, (1, 3), (1, 3), activation='relu')
+        l4_aud_dec = tf.layers.conv2d_transpose(l4_dec, 16, (1, 3), (1, 3), activation='relu')
+
+        return l4_aud_dec
+
 
     def train(self, track):
         pass
