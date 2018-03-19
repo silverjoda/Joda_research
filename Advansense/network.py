@@ -45,7 +45,25 @@ class VizEncoder:
 
 
     def make_encoder(self, input):
-        pass
+        # Include extra dimension for convolutions
+        exp_input = tf.expand_dims(input, 3)
+
+        conv_l1 = tfl.conv_2d(exp_input, 16, 5, 3, 'valid', 'relu', True, 'xavier')
+        conv_l2 = tfl.conv_2d(conv_l1, 16, 5, 3, 'valid', 'relu', True, 'xavier')
+        conv_l3 = tfl.conv_2d(conv_l2, 16, 3, 2, 'valid', 'relu', True, 'xavier')
+        conv_l4 = tfl.conv_2d(conv_l3, 16, 3, 2, 'valid', 'relu', True, 'xavier')
+
+        flattened = tfl.flatten(conv_l4)
+        fc = tfl.fully_connected(flattened, 200, 'relu', True, 'xavier')
+        fc_conv = tf.reshape(fc, (-1, 1, 200, 1))
+
+        audio_conv_l1 = tf.layers.conv2d_transpose(fc_conv, 16, (1,3), 2, 'valid', activation='relu', kernel_initializer='xavier')
+        audio_conv_l2 = tf.layers.conv2d_transpose(audio_conv_l1, 16, (1, 3), 2, 'valid', activation='relu', kernel_initializer='xavier')
+        audio_conv_l3 = tf.layers.conv2d_transpose(audio_conv_l2, 16, (1, 5), 3, 'valid', activation='relu', kernel_initializer='xavier')
+        audio_conv_l4 = tf.layers.conv2d_transpose(audio_conv_l3, 16, (1, 5), 3, 'valid', activation='relu', kernel_initializer='xavier')
+
+        return audio_conv_l4
+
 
     def make_decoder(self, input):
         pass
