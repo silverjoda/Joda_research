@@ -1,0 +1,6 @@
+1) Make realtime usb webcam reader
+2) Gather video dataset
+3) Make video dataset reader
+4) Make neural network architecture
+5) Make realtime audio writer
+6) Train
