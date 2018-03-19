@@ -50,8 +50,7 @@ class VidSet:
         return np.array(framelist)
 
 
-
-    def get_cons_sample(self, N, res):
+    def get_cons_sample(self, N):
         '''
 
         Parameters
@@ -62,9 +61,18 @@ class VidSet:
         -------
         N consecutive frames from the video dataset
         '''
-        pass
 
-    def get_rnd_sample(self, N, res):
+        # Length of dataset
+        d_len = len(self.dataset)
+
+        # Get random starting point
+        rnd_pt = np.random.randint(0, d_len - N)
+
+        # Get sample
+        return self.dataset[rnd_pt : rnd_pt + N]
+
+
+    def get_rnd_sample(self, N):
         '''
 
         Parameters
@@ -75,4 +83,28 @@ class VidSet:
         -------
         N random frames from the video dataset
         '''
-        pass
+
+        # Length of dataset
+        d_len = len(self.dataset)
+
+        # Choice arr
+        choice_arr = np.random.choice(d_len, N, replace=False)
+
+        # Chosen sample
+        return self.dataset[choice_arr]
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
