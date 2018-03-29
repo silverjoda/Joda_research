@@ -1,6 +1,7 @@
 import numpy as np
 from os import listdir
 import cv2
+import os
 
 
 class VidSet:
@@ -11,8 +12,12 @@ class VidSet:
         # Video frame resolution
         self.res = res
 
+        # Visualize
+        self.viz = False
+
         # Read video files and make numpy dataset
         self.dataset = self.make_dataset()
+
 
     def make_dataset(self):
         '''
@@ -30,19 +35,27 @@ class VidSet:
         files = listdir(self.path)
 
         for f in files:
-            cap = cv2.VideoCapture(f)
+            full_f = os.path.join(self.path, f)
+            cap = cv2.VideoCapture(full_f)
 
-            while (cap.isOpened()):
+            while cap.isOpened():
                 ret, frame = cap.read()
+                if not ret: break
 
+                # Raw frame
                 gray = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
 
-                # Add frame to list
-                framelist.append(gray)
+                # Resized frame
+                gray_rs = cv2.resize(gray, (self.res, self.res))
 
-                cv2.imshow('frame', gray)
-                if cv2.waitKey(1) & 0xFF == ord('q'):
-                    break
+                # Add frame to list
+                framelist.append(gray_rs)
+
+                # Visualize dataset
+                if self.viz:
+                    cv2.imshow('frame', gray_rs)
+                    if cv2.waitKey(1) & 0xFF == ord('q'):
+                        break
 
             cap.release()
             cv2.destroyAllWindows()
@@ -66,7 +79,7 @@ class VidSet:
         d_len = len(self.dataset)
 
         # Get random starting point
-        rnd_pt = np.random.randint(0, d_len - N)
+        rnd_pt = np.random.randint(0, d_len - N + 1)
 
         # Get sample
         return self.dataset[rnd_pt : rnd_pt + N]
@@ -95,10 +108,20 @@ class VidSet:
 
 
 
-
-
-
-
+#DEBUG#
+# reader = VidSet(224)
+#
+# dsize = len(reader.dataset)
+#
+# cons_sample = reader.get_cons_sample(1)
+# cons_sample = reader.get_cons_sample(5)
+# cons_sample = reader.get_cons_sample(dsize)
+#
+# rnd_sample = reader.get_rnd_sample(1)
+# rnd_sample = reader.get_rnd_sample(5)
+# rnd_sample = reader.get_rnd_sample(dsize)
+#
+# pass
 
 
 

@@ -89,6 +89,7 @@ class VizEncoder:
         resized = tf.image.resize_bilinear(deconv_l5, (self.res, self.res))
         return resized
 
+
     def train(self, data):
         '''
         Train network on data

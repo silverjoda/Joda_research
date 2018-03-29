@@ -1,6 +1,7 @@
 1) Make realtime usb webcam reader
 2) Gather video dataset - X
 3) Make video dataset reader - X
-4) Make neural network architecture - IP
+4) Make neural network architecture - X
 5) Make audio writer - X
-6) Train
+6) Debug - IP (network architecture)
+7) Train
