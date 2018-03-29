@@ -103,16 +103,45 @@ class VizEncoder:
         n_units = tf.shape(flattened)[1]
         reshaped = tf.reshape(audio_conv_l4, (-1, 1, 1, n_units))
 
-        deconv_l1 = tf.layers.conv2d_transpose(reshaped, 16, 3, (1,1),'valid',activation='relu',
-                                               kernel_initializer='xavier')
-        deconv_l2 = tf.layers.conv2d_transpose(deconv_l1, 16, 3, (2, 2), 'valid', activation='relu',
-                                               kernel_initializer='xavier')
-        deconv_l3 = tf.layers.conv2d_transpose(deconv_l2, 16, 3, (3, 3), 'valid', activation='relu',
-                                               kernel_initializer='xavier')
-        deconv_l4 = tf.layers.conv2d_transpose(deconv_l3, 16, 5, (3, 3), 'valid', activation='relu',
-                                               kernel_initializer='xavier')
-        deconv_l5 = tf.layers.conv2d_transpose(deconv_l4, 16, 5, (3, 3), 'valid', activation='relu',
-                                               kernel_initializer='xavier')
+        deconv_l1 = tf.layers.conv2d_transpose(inputs=reshaped,
+                                                     filters=16,
+                                                     kernel_size=(3, 3),
+                                                     strides=(1, 1),
+                                                     padding='valid',
+                                                     activation=tf.nn.relu,
+                                                     kernel_initializer=tf.contrib.layers.xavier_initializer())
+
+        deconv_l2 = tf.layers.conv2d_transpose(inputs=deconv_l1,
+                                               filters=16,
+                                               kernel_size=(3, 3),
+                                               strides=(2, 2),
+                                               padding='valid',
+                                               activation=tf.nn.relu,
+                                               kernel_initializer=tf.contrib.layers.xavier_initializer())
+
+        deconv_l3 = tf.layers.conv2d_transpose(inputs=deconv_l2,
+                                               filters=16,
+                                               kernel_size=(3, 3),
+                                               strides=(2, 2),
+                                               padding='valid',
+                                               activation=tf.nn.relu,
+                                               kernel_initializer=tf.contrib.layers.xavier_initializer())
+
+        deconv_l4 = tf.layers.conv2d_transpose(inputs=deconv_l3,
+                                               filters=16,
+                                               kernel_size=(5, 5),
+                                               strides=(3, 3),
+                                               padding='valid',
+                                               activation=tf.nn.relu,
+                                               kernel_initializer=tf.contrib.layers.xavier_initializer())
+
+        deconv_l5 = tf.layers.conv2d_transpose(inputs=deconv_l4,
+                                               filters=16,
+                                               kernel_size=(5, 5),
+                                               strides=(3, 3),
+                                               padding='valid',
+                                               activation=tf.nn.relu,
+                                               kernel_initializer=tf.contrib.layers.xavier_initializer())
 
         resized = tf.image.resize_bilinear(deconv_l5, (self.res, self.res))
         return resized
