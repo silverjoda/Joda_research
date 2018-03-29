@@ -5,7 +5,6 @@ import os
 
 class VizEncoder:
     def __init__(self, name, res, rate):
-
         self.name = name
         self.res = res
         self.rate = rate
@@ -57,12 +56,41 @@ class VizEncoder:
         fc = tfl.fully_connected(flattened, 200, 'relu', True, 'xavier')
         fc_conv = tf.reshape(fc, (-1, 1, 200, 1))
 
-        audio_deconv_l1 = tf.layers.conv2d_transpose(fc_conv, 16, (1,3), 2, 'valid', activation='relu', kernel_initializer='xavier')
-        audio_deconv_l2 = tf.layers.conv2d_transpose(audio_deconv_l1, 16, (1, 3), 2, 'valid', activation='relu', kernel_initializer='xavier')
-        audio_deconv_l3 = tf.layers.conv2d_transpose(audio_deconv_l2, 16, (1, 5), 3, 'valid', activation='relu', kernel_initializer='xavier')
-        audio_deconv_l4 = tf.layers.conv2d_transpose(audio_deconv_l3, 16, (1, 5), 3, 'valid', activation='relu', kernel_initializer='xavier')
+        audio_deconv_l1 = tf.layers.conv2d_transpose(inputs=fc_conv,
+                                                     filters=16,
+                                                     kernel_size=(1, 3),
+                                                     strides=(1, 2),
+                                                     padding='valid',
+                                                     activation=tf.nn.relu,
+                                                     kernel_initializer=tf.contrib.layers.xavier_initializer())
 
-        return audio_deconv_l4
+        audio_deconv_l2 = tf.layers.conv2d_transpose(inputs=audio_deconv_l1,
+                                                     filters=16,
+                                                     kernel_size=(1, 3),
+                                                     strides=(1, 2),
+                                                     padding='valid',
+                                                     activation=tf.nn.relu,
+                                                     kernel_initializer=tf.contrib.layers.xavier_initializer())
+
+        audio_deconv_l3 = tf.layers.conv2d_transpose(inputs=audio_deconv_l2,
+                                                     filters=16,
+                                                     kernel_size=(1, 5),
+                                                     strides=(1, 3),
+                                                     padding='valid',
+                                                     activation=tf.nn.relu,
+                                                     kernel_initializer=tf.contrib.layers.xavier_initializer())
+
+        audio_deconv_l4 = tf.layers.conv2d_transpose(inputs=audio_deconv_l3,
+                                                     filters=1,
+                                                     kernel_size=(1, 5),
+                                                     strides=(1, 3),
+                                                     padding='valid',
+                                                     activation=tf.nn.relu,
+                                                     kernel_initializer=tf.contrib.layers.xavier_initializer())
+
+        squeezed_output = tf.squeeze(audio_deconv_l4, squeeze_dims=(1,3))
+
+        return squeezed_output
 
 
     def make_decoder(self, input):
@@ -132,6 +160,7 @@ class VizEncoder:
         with self.g.as_default():
             saver = tf.train.Saver()
             saver.save(self.sess, self.weights_path + "/trained_model")
+
 
     def restore_weights(self):
         with self.g.as_default():
