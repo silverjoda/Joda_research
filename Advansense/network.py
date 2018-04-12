@@ -38,7 +38,7 @@ class VizEncoder:
             device_count={'GPU': 0}
         )
 
-        # Make sessio using given configuration
+        # Make session using given configuration
         self.sess = tf.Session(graph=self.g, config=tfconfig)
         self.sess.run(self.init)
 
@@ -54,7 +54,7 @@ class VizEncoder:
 
         flattened = tfl.flatten(conv_l4)
         fc = tfl.fully_connected(flattened, 200, 'relu', True, 'xavier')
-        fc_conv = tf.reshape(fc, (-1, 1, 200, 1))
+        fc_conv = tf.reshape(fc, (-1, 1, 100, 1))
 
         audio_deconv_l1 = tf.layers.conv2d_transpose(inputs=fc_conv,
                                                      filters=16,
@@ -94,13 +94,14 @@ class VizEncoder:
 
 
     def make_decoder(self, input):
-        audio_conv_l1 = tfl.conv_1d(input, 16, 5, 3, 'valid', 'relu', True, 'xavier')
-        audio_conv_l2 = tfl.conv_1d(audio_conv_l1, 16, 5, 3, 'valid', 'relu', True, 'xavier')
+        exp_input = tf.expand_dims(input, 2)
+        audio_conv_l1 = tfl.conv_1d(exp_input, 16, 7, 5, 'valid', 'relu', True, 'xavier')
+        audio_conv_l2 = tfl.conv_1d(audio_conv_l1, 16, 7, 5, 'valid', 'relu', True, 'xavier')
         audio_conv_l3 = tfl.conv_1d(audio_conv_l2, 16, 5, 3, 'valid', 'relu', True, 'xavier')
         audio_conv_l4 = tfl.conv_1d(audio_conv_l3, 16, 5, 3, 'valid', 'relu', True, 'xavier')
 
         flattened = tfl.flatten(audio_conv_l4)
-        n_units = tf.shape(flattened)[1]
+        n_units = flattened.get_shape()[1]
         reshaped = tf.reshape(audio_conv_l4, (-1, 1, 1, n_units))
 
         deconv_l1 = tf.layers.conv2d_transpose(inputs=reshaped,
@@ -128,7 +129,7 @@ class VizEncoder:
                                                kernel_initializer=tf.contrib.layers.xavier_initializer())
 
         deconv_l4 = tf.layers.conv2d_transpose(inputs=deconv_l3,
-                                               filters=16,
+                                               filters=8,
                                                kernel_size=(5, 5),
                                                strides=(3, 3),
                                                padding='valid',
@@ -136,7 +137,7 @@ class VizEncoder:
                                                kernel_initializer=tf.contrib.layers.xavier_initializer())
 
         deconv_l5 = tf.layers.conv2d_transpose(inputs=deconv_l4,
-                                               filters=16,
+                                               filters=1,
                                                kernel_size=(5, 5),
                                                strides=(3, 3),
                                                padding='valid',
@@ -144,7 +145,7 @@ class VizEncoder:
                                                kernel_initializer=tf.contrib.layers.xavier_initializer())
 
         resized = tf.image.resize_bilinear(deconv_l5, (self.res, self.res))
-        return resized
+        return tf.squeeze(resized, 3)
 
 
     def train(self, data):
