@@ -5,7 +5,7 @@ import os
 
 
 class VidSet:
-    def __init__(self, res):
+    def __init__(self, res, viz=False):
         # Video files are kept here
         self.path = 'video_files'
 
@@ -13,7 +13,7 @@ class VidSet:
         self.res = res
 
         # Visualize
-        self.viz = False
+        self.viz = viz
 
         # Read video files and make numpy dataset
         self.dataset = self.make_dataset()

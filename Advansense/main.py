@@ -7,7 +7,7 @@ def main():
 
     imres = 224
     samplerate = 44100
-    n_iters = 100
+    n_iters = 2000
     batchsize = 16
 
     # Make network
@@ -25,13 +25,18 @@ def main():
             print "Iteration {}/{}, mse: {}".\
                 format(i, n_iters, mse)
 
+    # Save weights
+    network.save_weights()
+
     # Test
     test_sample = video_reader.get_cons_sample(300)
     encoded_test_sample = network.encode(test_sample)
     audio_writer = Audiowriter()
     audio_writer.writetofile(encoded_test_sample,
-                             "firsttest",
+                             "firsttest.wav",
                              samplerate)
+
+
 
 
 if __name__ == "__main__":

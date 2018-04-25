@@ -54,7 +54,7 @@ class VizEncoder:
 
         flattened = tfl.flatten(conv_l4)
         fc = tfl.fully_connected(flattened, 200, 'relu', True, 'xavier')
-        fc_conv = tf.reshape(fc, (-1, 1, 100, 1))
+        fc_conv = tf.reshape(fc, (-1, 1, 200, 1))
 
         audio_deconv_l1 = tf.layers.conv2d_transpose(inputs=fc_conv,
                                                      filters=16,
